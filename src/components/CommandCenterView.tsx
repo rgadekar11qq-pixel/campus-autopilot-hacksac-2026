@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAutopilot } from "@/context/AutopilotContext";
-import { detectGlobalConflicts } from "@/domain/engine";
+import { computeOperationalMetrics } from "@/domain/engine";
 import { formatCurrency, formatTimeRange } from "@/lib/utils";
 import {
   Zap,
@@ -33,39 +33,18 @@ export function CommandCenterView() {
     resetDemoScenario,
   } = useAutopilot();
 
-  const dayBookings = state.bookings
-    .filter(
-      (b) => b.startIso.startsWith(selectedDate) && b.status !== "CANCELLED"
-    )
-    .sort((a, b) => a.startIso.localeCompare(b.startIso));
-
-  const globalConflicts = detectGlobalConflicts(state);
-  const occupiedRoomIds = new Set(dayBookings.map((b) => b.roomId));
-  const unavailableRoomIds = new Set(
-    state.availabilityWindows
-      .filter(
-        (w) => w.entityType === "ROOM" && w.startIso.startsWith(selectedDate)
-      )
-      .map((w) => w.entityId)
-  );
-
-  const totalOperationalUnits = state.resources.reduce(
-    (sum, r) => sum + r.operationalQuantity,
-    0
-  );
-  const activeResourceAllocations = state.resourceAllocations.filter(
-    (a) =>
-      a.startIso.startsWith(selectedDate) &&
-      (a.status === "RESERVED" || a.status === "CHECKED_OUT")
-  );
-  const allocatedUnitCount = activeResourceAllocations.reduce(
-    (sum, a) => sum + a.quantity,
-    0
-  );
-  const reusedValueInr = activeResourceAllocations.reduce((sum, a) => {
-    const res = state.resources.find((r) => r.id === a.resourceId);
-    return sum + (res?.replacementCostInr ?? 0) * a.quantity;
-  }, 0);
+  const metrics = computeOperationalMetrics(state, selectedDate);
+  const {
+    dayBookings,
+    globalConflicts,
+    occupiedRoomCount,
+    operationalRoomCount,
+    totalRoomCount,
+    totalOperationalUnits,
+    activeDayUnitAllocations,
+    peakConcurrentUnitsOnDate,
+    activeDayReusedValueInr,
+  } = metrics;
 
   const roboticsBooking = state.bookings.find(
     (b) => b.eventId === "evt-robotics-workshop" && b.status !== "CANCELLED"
@@ -178,11 +157,10 @@ export function CommandCenterView() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-mono font-bold text-slate-100">
-              {state.rooms.length - unavailableRoomIds.size}/
-              {state.rooms.length}
+              {operationalRoomCount}/{totalRoomCount}
             </span>
             <span className="text-xs text-slate-400">
-              operational ({occupiedRoomIds.size} with bookings)
+              operational ({occupiedRoomCount} with bookings)
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-emerald-400">
@@ -203,10 +181,11 @@ export function CommandCenterView() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-mono font-bold text-slate-100">
-              {allocatedUnitCount}/{totalOperationalUnits}
+              {peakConcurrentUnitsOnDate}/{totalOperationalUnits}
             </span>
             <span className="text-xs text-slate-400">
-              units allocated ({formatCurrency(reusedValueInr)} reused)
+              peak pool ({activeDayUnitAllocations} unit-slots •{" "}
+              {formatCurrency(activeDayReusedValueInr)} active reuse)
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-amber-300">

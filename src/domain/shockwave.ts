@@ -942,6 +942,19 @@ export function approveCandidatePlan(
     };
   }
 
+  if (
+    currentState.approvals.some(
+      (a) =>
+        a.disruptionId === disruption.id || a.candidatePlanId === candidate.id
+    )
+  ) {
+    return {
+      ok: false,
+      error:
+        "Duplicate approval rejected: this recovery plan or disruption has already been committed.",
+    };
+  }
+
   if (!candidate.hardConstraintPassed) {
     return {
       ok: false,
@@ -960,6 +973,14 @@ export function approveCandidatePlan(
     return {
       ok: false,
       error: "Target booking or event no longer exists in application state.",
+    };
+  }
+
+  if (origBooking.status === "CANCELLED") {
+    return {
+      ok: false,
+      error:
+        "Cannot approve recovery plan: target booking has already been cancelled.",
     };
   }
 
@@ -1111,3 +1132,23 @@ export function approveCandidatePlan(
     approvalRecord,
   };
 }
+
+/**
+ * Explicitly rejects/dismisses a proposed Shockwave simulation without mutating any bookings,
+ * rooms, equipment allocations, or mentor commitments.
+ */
+export function rejectShockwaveProposal(
+  currentState: ApplicationState,
+  disruption: Disruption
+): {
+  ok: true;
+  nextState: ApplicationState;
+  rejectedDisruptionId: string;
+} {
+  return {
+    ok: true,
+    nextState: currentState,
+    rejectedDisruptionId: disruption.id,
+  };
+}
+

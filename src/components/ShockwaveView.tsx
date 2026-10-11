@@ -682,6 +682,13 @@ export function ShockwaveView() {
                   Valid Candidates:{" "}
                   <strong>{activeSimulation.validCandidates.length}</strong>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSimulation(null)}
+                  className="px-3 py-2 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-300 hover:text-slate-100 font-sans font-medium"
+                >
+                  Reject / Dismiss Proposal
+                </button>
               </div>
             </div>
 

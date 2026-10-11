@@ -175,10 +175,13 @@ export function cancelBookingById(
   reason = "Cancelled by organizer",
   actor = "Campus Organizer"
 ): ApplicationState {
-  const next = structuredClone(state);
-  const bkg = next.bookings.find((b) => b.id === bookingId);
-  if (!bkg) return state;
+  const bkgCheck = state.bookings.find((b) => b.id === bookingId);
+  if (!bkgCheck || bkgCheck.status === "CANCELLED") {
+    return state;
+  }
 
+  const next = structuredClone(state);
+  const bkg = next.bookings.find((b) => b.id === bookingId)!;
   const ev = next.events.find((e) => e.id === bkg.eventId);
   const nowIso = new Date().toISOString();
 
@@ -186,7 +189,7 @@ export function cancelBookingById(
   bkg.updatedAtIso = nowIso;
 
   for (const alloc of next.resourceAllocations) {
-    if (alloc.bookingId === bookingId) {
+    if (alloc.bookingId === bookingId && alloc.status !== "RETURNED") {
       alloc.status = "CANCELLED";
       alloc.updatedAtIso = nowIso;
     }
@@ -225,10 +228,37 @@ export function updateAllocationReturnStatus(
   damagedOrMissingUnits = 0,
   actor = "Lab Custodian"
 ): ApplicationState {
-  const next = structuredClone(state);
-  const alloc = next.resourceAllocations.find((a) => a.id === allocationId);
-  if (!alloc) return state;
+  const existingAlloc = state.resourceAllocations.find(
+    (a) => a.id === allocationId
+  );
+  if (!existingAlloc) return state;
 
+  // Guard against returning an already returned/closed/cancelled allocation
+  const parentBooking = state.bookings.find(
+    (b) => b.id === existingAlloc.bookingId
+  );
+  if (
+    existingAlloc.status === "RETURNED" ||
+    existingAlloc.status === "DAMAGED_ON_RETURN" ||
+    existingAlloc.status === "MISSING_ON_RETURN" ||
+    existingAlloc.status === "CANCELLED" ||
+    parentBooking?.status === "CANCELLED"
+  ) {
+    return state;
+  }
+
+  // Only allow valid return/checkout transition targets
+  if (
+    newStatus !== "RETURNED" &&
+    newStatus !== "DAMAGED_ON_RETURN" &&
+    newStatus !== "MISSING_ON_RETURN" &&
+    newStatus !== "CHECKED_OUT"
+  ) {
+    return state;
+  }
+
+  const next = structuredClone(state);
+  const alloc = next.resourceAllocations.find((a) => a.id === allocationId)!;
   const resource = next.resources.find((r) => r.id === alloc.resourceId);
   const nowIso = new Date().toISOString();
 
@@ -242,7 +272,10 @@ export function updateAllocationReturnStatus(
     (newStatus === "DAMAGED_ON_RETURN" || newStatus === "MISSING_ON_RETURN") &&
     resource
   ) {
-    const affected = Math.max(1, Math.min(alloc.quantity, damagedOrMissingUnits || 1));
+    const affected = Math.max(
+      1,
+      Math.min(alloc.quantity, Math.floor(damagedOrMissingUnits || 1))
+    );
     alloc.returnedQuantity = Math.max(0, alloc.quantity - affected);
     resource.operationalQuantity = Math.max(
       0,
@@ -285,13 +318,14 @@ export function updateResourceConditionDirect(
   reason: string,
   actor = "Inventory Manager"
 ): ApplicationState {
+  if (!Number.isFinite(operationalQuantity)) return state;
   const next = structuredClone(state);
   const resource = next.resources.find((r) => r.id === resourceId);
   if (!resource) return state;
 
   const clampedQty = Math.max(
     0,
-    Math.min(resource.totalQuantity, operationalQuantity)
+    Math.min(resource.totalQuantity, Math.floor(operationalQuantity))
   );
   resource.condition = condition;
   resource.operationalQuantity = clampedQty;

@@ -12,6 +12,18 @@ import {
 } from "./types";
 import { FACILITY_LABELS } from "./seedData";
 
+const ISO_LOCAL_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/;
+const DATE_STR_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_STR_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export function isValidIsoDateTime(iso: string): boolean {
+  if (!iso || typeof iso !== "string" || !ISO_LOCAL_REGEX.test(iso)) {
+    return false;
+  }
+  const ms = new Date(iso).getTime();
+  return Number.isFinite(ms);
+}
+
 /**
  * Half-open interval intersection check: [startA, endA) intersects [startB, endB)
  * Using epoch milliseconds for deterministic comparison.
@@ -26,11 +38,22 @@ export function intervalsOverlap(
   const a1 = new Date(endAIso).getTime();
   const b0 = new Date(startBIso).getTime();
   const b1 = new Date(endBIso).getTime();
+  if (
+    !Number.isFinite(a0) ||
+    !Number.isFinite(a1) ||
+    !Number.isFinite(b0) ||
+    !Number.isFinite(b1)
+  ) {
+    return false;
+  }
   return a0 < b1 && b0 < a1;
 }
 
 export function addMinutesToIso(iso: string, minutes: number): string {
   const d = new Date(iso);
+  if (!Number.isFinite(d.getTime()) || !Number.isFinite(minutes)) {
+    return iso;
+  }
   const target = new Date(d.getTime() + minutes * 60_000);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(
@@ -59,6 +82,11 @@ export function computeBookingIntervals(
   requiresExtendedTurnaround?: boolean,
   overrideTurnaroundReason?: string
 ) {
+  const safeSetup = Math.max(0, Number.isFinite(setupMinutes) ? setupMinutes : 0);
+  const safeCleanup = Math.max(
+    0,
+    Number.isFinite(cleanupMinutes) ? cleanupMinutes : 0
+  );
   const baseTurnaround = resolveTurnaroundMinutes(
     state,
     room,
@@ -72,8 +100,8 @@ export function computeBookingIntervals(
       ? 0
       : baseTurnaround;
 
-  const setupStartIso = addMinutesToIso(startIso, -setupMinutes);
-  const cleanupEndIso = addMinutesToIso(endIso, cleanupMinutes);
+  const setupStartIso = addMinutesToIso(startIso, -safeSetup);
+  const cleanupEndIso = addMinutesToIso(endIso, safeCleanup);
   const turnaroundEndIso = addMinutesToIso(cleanupEndIso, effectiveTurnaround);
 
   return {
@@ -101,6 +129,43 @@ export interface ValidationRequest {
   overrideTurnaroundReason?: string;
   excludeBookingId?: string;
   excludeEventId?: string;
+}
+
+/**
+ * Normalizes and aggregates duplicate resource requirements by resourceId.
+ */
+export function normalizeResourceRequirements(
+  reqs: ResourceRequirement[]
+): {
+  aggregated: ResourceRequirement[];
+  hasInvalidQuantity: boolean;
+} {
+  const map = new Map<string, number>();
+  let hasInvalidQuantity = false;
+
+  for (const r of reqs) {
+    if (!r || typeof r.resourceId !== "string" || !r.resourceId.trim()) {
+      hasInvalidQuantity = true;
+      continue;
+    }
+    if (
+      typeof r.quantity !== "number" ||
+      !Number.isFinite(r.quantity) ||
+      !Number.isInteger(r.quantity) ||
+      r.quantity < 0
+    ) {
+      hasInvalidQuantity = true;
+      continue;
+    }
+    if (r.quantity === 0) continue;
+    map.set(r.resourceId, (map.get(r.resourceId) ?? 0) + r.quantity);
+  }
+
+  const aggregated: ResourceRequirement[] = [];
+  for (const [resourceId, quantity] of map.entries()) {
+    aggregated.push({ resourceId, quantity });
+  }
+  return { aggregated, hasInvalidQuantity };
 }
 
 /**
@@ -171,7 +236,6 @@ export function getAvailableResourceQuantity(
     ) {
       return false;
     }
-    // Check if parent booking is cancelled
     const bkg = state.bookings.find((b) => b.id === alloc.bookingId);
     if (bkg && bkg.status === "CANCELLED") return false;
 
@@ -188,17 +252,18 @@ export function getAvailableResourceQuantity(
   }
 
   // Evaluate peak concurrent usage at all interval start boundaries within [startIso, endIso)
-  const checkPoints = new Set<number>([new Date(startIso).getTime()]);
+  const startMs = new Date(startIso).getTime();
+  const endMs = new Date(endIso).getTime();
+  const checkPoints = new Set<number>([startMs]);
   for (const a of overlappingAllocations) {
     const t = new Date(a.startIso).getTime();
-    if (t >= new Date(startIso).getTime() && t < new Date(endIso).getTime()) {
+    if (t >= startMs && t < endMs) {
       checkPoints.add(t);
     }
   }
 
   let peakAllocated = 0;
   for (const pt of checkPoints) {
-    const ptIso = new Date(pt).toISOString();
     let sumAtPt = 0;
     for (const a of overlappingAllocations) {
       const a0 = new Date(a.startIso).getTime();
@@ -210,7 +275,6 @@ export function getAvailableResourceQuantity(
     if (sumAtPt > peakAllocated) {
       peakAllocated = sumAtPt;
     }
-    void ptIso;
   }
 
   const available = Math.max(0, resource.operationalQuantity - peakAllocated);
@@ -242,7 +306,7 @@ export function evaluateRequestFeasibility(
         {
           code: "ROOM_UNAVAILABLE_WINDOW",
           severity: "HARD",
-          entityId: req.roomId,
+          entityId: req.roomId || "unknown",
           entityName: "Unknown Room",
           message: "Selected room does not exist.",
         },
@@ -259,13 +323,56 @@ export function evaluateRequestFeasibility(
     };
   }
 
-  if (new Date(req.endIso).getTime() <= new Date(req.startIso).getTime()) {
+  // Validate date/time strings and numeric interval parameters
+  if (!isValidIsoDateTime(req.startIso) || !isValidIsoDateTime(req.endIso)) {
+    violations.push({
+      code: "INVALID_INTERVAL",
+      severity: "HARD",
+      entityId: room.id,
+      entityName: room.name,
+      message: "Start time or end time is missing or has an invalid ISO format.",
+    });
+  } else if (
+    new Date(req.endIso).getTime() <= new Date(req.startIso).getTime()
+  ) {
     violations.push({
       code: "INVALID_INTERVAL",
       severity: "HARD",
       entityId: room.id,
       entityName: room.name,
       message: "Event end time must be strictly after start time.",
+    });
+  }
+
+  if (
+    typeof req.setupMinutes !== "number" ||
+    !Number.isFinite(req.setupMinutes) ||
+    req.setupMinutes < 0 ||
+    typeof req.cleanupMinutes !== "number" ||
+    !Number.isFinite(req.cleanupMinutes) ||
+    req.cleanupMinutes < 0
+  ) {
+    violations.push({
+      code: "INVALID_INTERVAL",
+      severity: "HARD",
+      entityId: room.id,
+      entityName: room.name,
+      message: "Setup and cleanup durations must be non-negative numbers.",
+    });
+  }
+
+  if (
+    typeof req.expectedAttendance !== "number" ||
+    !Number.isFinite(req.expectedAttendance) ||
+    !Number.isInteger(req.expectedAttendance) ||
+    req.expectedAttendance <= 0
+  ) {
+    violations.push({
+      code: "CAPACITY_INSUFFICIENT",
+      severity: "HARD",
+      entityId: room.id,
+      entityName: room.name,
+      message: "Expected attendance must be a positive integer greater than zero.",
     });
   }
 
@@ -281,7 +388,11 @@ export function evaluateRequestFeasibility(
   );
 
   // 1. Capacity check
-  if (room.capacity < req.expectedAttendance) {
+  if (
+    typeof req.expectedAttendance === "number" &&
+    req.expectedAttendance > 0 &&
+    room.capacity < req.expectedAttendance
+  ) {
     violations.push({
       code: "CAPACITY_INSUFFICIENT",
       severity: "HARD",
@@ -289,7 +400,7 @@ export function evaluateRequestFeasibility(
       entityName: room.name,
       message: `${room.name} is unsuitable because its capacity is ${room.capacity}, below the required ${req.expectedAttendance}.`,
     });
-  } else {
+  } else if (req.expectedAttendance > 0) {
     const headroom = room.capacity - req.expectedAttendance;
     suitabilityReasons.push(
       `Capacity verified (${room.capacity} seats supports ${req.expectedAttendance} attendees with ${headroom} buffer seats).`
@@ -297,7 +408,7 @@ export function evaluateRequestFeasibility(
   }
 
   // 2. Facility check
-  const missingFacilities = req.requiredFacilities.filter(
+  const missingFacilities = (req.requiredFacilities ?? []).filter(
     (f) => !room.facilities.includes(f)
   );
   if (missingFacilities.length > 0) {
@@ -309,7 +420,7 @@ export function evaluateRequestFeasibility(
       entityName: room.name,
       message: `${room.name} is missing required facility infrastructure: ${names}.`,
     });
-  } else if (req.requiredFacilities.length > 0) {
+  } else if ((req.requiredFacilities ?? []).length > 0) {
     suitabilityReasons.push(
       `All ${req.requiredFacilities.length} required room facilities present (${req.requiredFacilities
         .map((f) => FACILITY_LABELS[f])
@@ -446,7 +557,8 @@ export function evaluateRequestFeasibility(
       (v) =>
         v.code === "ROOM_OVERLAP_CONFLICT" ||
         v.code === "SETUP_CLEANUP_CONFLICT" ||
-        v.code === "TURNAROUND_BUFFER_VIOLATION"
+        v.code === "TURNAROUND_BUFFER_VIOLATION" ||
+        v.code === "INVALID_INTERVAL"
     )
   ) {
     suitabilityReasons.push(
@@ -460,9 +572,22 @@ export function evaluateRequestFeasibility(
     );
   }
 
-  // 5. Resource quantity and availability checks
-  for (const reqRes of req.requiredResources) {
-    if (reqRes.quantity <= 0) continue;
+  // 5. Resource quantity and availability checks (with duplicate aggregation)
+  const { aggregated: normalizedResources, hasInvalidQuantity } =
+    normalizeResourceRequirements(req.requiredResources ?? []);
+
+  if (hasInvalidQuantity) {
+    violations.push({
+      code: "RESOURCE_INSUFFICIENT",
+      severity: "HARD",
+      entityId: "invalid-resource-qty",
+      entityName: "Equipment Request",
+      message:
+        "Equipment quantities must be non-negative integers with valid resource IDs.",
+    });
+  }
+
+  for (const reqRes of normalizedResources) {
     const resource = state.resources.find((r) => r.id === reqRes.resourceId);
     if (!resource) {
       violations.push({
@@ -509,10 +634,21 @@ export function evaluateRequestFeasibility(
     }
   }
 
-  // 6. Required Mentors / People availability checks
-  for (const personId of req.requiredPeopleIds) {
+  // 6. Required Mentors / People availability checks (deduplicated)
+  const uniquePeopleIds = Array.from(new Set(req.requiredPeopleIds ?? []));
+  for (const personId of uniquePeopleIds) {
     const person = state.people.find((p) => p.id === personId);
-    const personName = person ? `${person.name} (${person.roleTitle})` : personId;
+    if (!person) {
+      violations.push({
+        code: "PERSON_UNAVAILABLE",
+        severity: "HARD",
+        entityId: personId,
+        entityName: personId,
+        message: `Requested mentor or role "${personId}" does not exist in campus directory.`,
+      });
+      continue;
+    }
+    const personName = `${person.name} (${person.roleTitle})`;
 
     const personWindow = state.availabilityWindows.find(
       (w) =>
@@ -570,7 +706,7 @@ export function evaluateRequestFeasibility(
         )}–${overlappingCommitments[0].endIso.slice(11, 16)}).`,
       });
     } else {
-      suitabilityReasons.push(`Mentor ${person?.name ?? personId} is available.`);
+      suitabilityReasons.push(`Mentor ${person.name} is available.`);
     }
   }
 
@@ -586,11 +722,14 @@ export function evaluateRequestFeasibility(
 
   // If infeasible and checkAlternativesIfInfeasible is true, check whether another room or slot on that date is feasible
   let hasAlternative = false;
-  if (checkAlternativesIfInfeasible) {
+  const hasFatalInputViolation = violations.some(
+    (v) => v.code === "INVALID_INTERVAL" || hasInvalidQuantity
+  );
+
+  if (checkAlternativesIfInfeasible && !hasFatalInputViolation) {
     const durationMs =
       new Date(req.endIso).getTime() - new Date(req.startIso).getTime();
     if (durationMs > 0) {
-      // Check other rooms at the same time
       for (const altRoom of state.rooms) {
         if (altRoom.id === req.roomId) continue;
         const altCheck = evaluateRequestFeasibility(
@@ -604,7 +743,6 @@ export function evaluateRequestFeasibility(
         }
       }
 
-      // If no room at same time, check standard time slots on the same day
       if (!hasAlternative) {
         const datePrefix = req.startIso.slice(0, 10);
         const candidateHours = ["09:00", "11:00", "13:30", "14:30", "16:00"];
@@ -710,8 +848,125 @@ export function detectGlobalConflicts(
 }
 
 /**
+ * Authoritative calculation of dashboard and inventory metrics for a given operational date.
+ * Eliminates any ambiguity between point-in-time operational pool capacity (e.g., 50 units),
+ * active day unit-reservations (e.g., 37 unit-allocations), and cumulative reused asset value.
+ */
+export function computeOperationalMetrics(
+  state: ApplicationState,
+  selectedDate: string
+) {
+  const dayBookings = state.bookings
+    .filter(
+      (b) => b.startIso.startsWith(selectedDate) && b.status !== "CANCELLED"
+    )
+    .sort((a, b) => a.startIso.localeCompare(b.startIso));
+
+  const globalConflicts = detectGlobalConflicts(state);
+  const occupiedRoomIds = new Set(dayBookings.map((b) => b.roomId));
+  const unavailableRoomIds = new Set(
+    state.availabilityWindows
+      .filter(
+        (w) => w.entityType === "ROOM" && w.startIso.startsWith(selectedDate)
+      )
+      .map((w) => w.entityId)
+  );
+
+  const totalCatalogUnits = state.resources.reduce(
+    (sum, r) => sum + r.totalQuantity,
+    0
+  );
+  const totalOperationalUnits = state.resources.reduce(
+    (sum, r) => sum + r.operationalQuantity,
+    0
+  );
+
+  // Active (RESERVED / CHECKED_OUT) allocations on selectedDate
+  const activeDayAllocations = state.resourceAllocations.filter((a) => {
+    if (!a.startIso.startsWith(selectedDate)) return false;
+    if (a.status !== "RESERVED" && a.status !== "CHECKED_OUT") return false;
+    const bkg = state.bookings.find((b) => b.id === a.bookingId);
+    return !bkg || bkg.status !== "CANCELLED";
+  });
+
+  // All non-cancelled allocations on selectedDate (including RETURNED from earlier today)
+  const allDayNonCancelledAllocations = state.resourceAllocations.filter((a) => {
+    if (!a.startIso.startsWith(selectedDate)) return false;
+    if (a.status === "CANCELLED") return false;
+    const bkg = state.bookings.find((b) => b.id === a.bookingId);
+    return !bkg || bkg.status !== "CANCELLED";
+  });
+
+  // All non-cancelled allocations across all dates in state
+  const allNonCancelledAllocations = state.resourceAllocations.filter((a) => {
+    if (a.status === "CANCELLED") return false;
+    const bkg = state.bookings.find((b) => b.id === a.bookingId);
+    return !bkg || bkg.status !== "CANCELLED";
+  });
+
+  const activeDayUnitAllocations = activeDayAllocations.reduce(
+    (sum, a) => sum + a.quantity,
+    0
+  );
+
+  const allDayUnitAllocations = allDayNonCancelledAllocations.reduce(
+    (sum, a) => sum + a.quantity,
+    0
+  );
+
+  // Compute true peak simultaneous units in use across the entire campus on selectedDate
+  const timePoints = new Set<number>();
+  for (const a of activeDayAllocations) {
+    timePoints.add(new Date(a.startIso).getTime());
+  }
+  let peakConcurrentUnitsOnDate = 0;
+  for (const pt of timePoints) {
+    let sum = 0;
+    for (const a of activeDayAllocations) {
+      const a0 = new Date(a.startIso).getTime();
+      const a1 = new Date(a.endIso).getTime();
+      if (pt >= a0 && pt < a1) {
+        sum += a.quantity;
+      }
+    }
+    if (sum > peakConcurrentUnitsOnDate) {
+      peakConcurrentUnitsOnDate = sum;
+    }
+  }
+
+  const activeDayReusedValueInr = activeDayAllocations.reduce((sum, a) => {
+    const res = state.resources.find((r) => r.id === a.resourceId);
+    return sum + (res?.replacementCostInr ?? 0) * a.quantity;
+  }, 0);
+
+  const totalSessionReusedValueInr = allNonCancelledAllocations.reduce(
+    (sum, a) => {
+      const res = state.resources.find((r) => r.id === a.resourceId);
+      return sum + (res?.replacementCostInr ?? 0) * a.quantity;
+    },
+    0
+  );
+
+  return {
+    dayBookings,
+    globalConflicts,
+    occupiedRoomCount: occupiedRoomIds.size,
+    unavailableRoomCount: unavailableRoomIds.size,
+    operationalRoomCount: state.rooms.length - unavailableRoomIds.size,
+    totalRoomCount: state.rooms.length,
+    totalCatalogUnits,
+    totalOperationalUnits,
+    activeDayUnitAllocations,
+    allDayUnitAllocations,
+    peakConcurrentUnitsOnDate,
+    activeDayReusedValueInr,
+    totalSessionReusedValueInr,
+  };
+}
+
+/**
  * Creates and commits a validated booking and its resource/person allocations atomically.
- * Rejects if hard constraints fail.
+ * Rejects if hard constraints or input validations fail.
  */
 export function createValidatedBooking(
   state: ApplicationState,
@@ -720,10 +975,48 @@ export function createValidatedBooking(
 ):
   | { ok: true; nextState: ApplicationState; bookingId: string; eventId: string }
   | { ok: false; feasibility: FeasibilityResult } {
+  if (
+    !draft ||
+    typeof draft.title !== "string" ||
+    draft.title.trim().length === 0 ||
+    !DATE_STR_REGEX.test(draft.dateStr ?? "") ||
+    !TIME_STR_REGEX.test(draft.startTimeStr ?? "") ||
+    typeof draft.durationMinutes !== "number" ||
+    !Number.isFinite(draft.durationMinutes) ||
+    draft.durationMinutes <= 0
+  ) {
+    return {
+      ok: false,
+      feasibility: {
+        status: "NO_FEASIBLE_PLAN",
+        isFeasible: false,
+        violations: [
+          {
+            code: "INVALID_INTERVAL",
+            severity: "HARD",
+            entityId: draft?.preferredRoomId ?? "unknown",
+            entityName: draft?.title || "Invalid Booking Request",
+            message:
+              "Invalid booking input: title, valid date (YYYY-MM-DD), valid start time (HH:mm), and positive duration are required.",
+          },
+        ],
+        suitabilityReasons: [],
+        computedIntervals: {
+          setupStartIso: "",
+          startIso: "",
+          endIso: "",
+          cleanupEndIso: "",
+          turnaroundEndIso: "",
+          turnaroundMinutes: 15,
+        },
+      },
+    };
+  }
+
   const startIso = `${draft.dateStr}T${draft.startTimeStr}:00`;
   const endIso = addMinutesToIso(startIso, draft.durationMinutes);
 
-  // Prevent duplicate submission (same title, room, and start time)
+  // Prevent duplicate submission (same title and start time)
   const duplicate = state.bookings.find((b) => {
     if (b.status === "CANCELLED") return false;
     const ev = state.events.find((e) => e.id === b.eventId);
@@ -784,6 +1077,11 @@ export function createValidatedBooking(
     return { ok: false, feasibility };
   }
 
+  const { aggregated: normalizedResources } = normalizeResourceRequirements(
+    draft.requiredResources ?? []
+  );
+  const uniquePeopleIds = Array.from(new Set(draft.requiredPeopleIds ?? []));
+
   const nowIso = new Date().toISOString();
   const suffix = `${state.stateVersion + 1}-${Math.floor(Math.random() * 900 + 100)}`;
   const eventId = `evt-${suffix}`;
@@ -792,14 +1090,14 @@ export function createValidatedBooking(
   const newEvent: EventEntity = {
     id: eventId,
     title: draft.title.trim(),
-    description: draft.description.trim(),
-    organizer: draft.organizer.trim() || "Campus Organizer",
+    description: (draft.description ?? "").trim(),
+    organizer: (draft.organizer ?? "").trim() || "Campus Organizer",
     category: draft.category,
     priority: draft.priority,
     expectedAttendance: draft.expectedAttendance,
-    requiredFacilities: [...draft.requiredFacilities],
-    requiredResources: draft.requiredResources.filter((r) => r.quantity > 0),
-    requiredPeopleIds: [...draft.requiredPeopleIds],
+    requiredFacilities: [...(draft.requiredFacilities ?? [])],
+    requiredResources: normalizedResources,
+    requiredPeopleIds: uniquePeopleIds,
     setupMinutes: draft.setupMinutes,
     cleanupMinutes: draft.cleanupMinutes,
     requiresExtendedTurnaround: draft.requiresExtendedTurnaround,
