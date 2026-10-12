@@ -14,7 +14,6 @@ import {
   EventPriority,
   FacilityType,
 } from "@/domain/types";
-import { formatCurrency } from "@/lib/utils";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -24,10 +23,11 @@ import {
   Users,
   Cpu,
   UserCheck,
-  Building2,
   ArrowRight,
   RotateCcw,
   BookmarkCheck,
+  Minus,
+  Plus,
 } from "lucide-react";
 
 const ALL_FACILITIES: FacilityType[] = [
@@ -117,7 +117,6 @@ export function SmartBookingView() {
     );
   }, [state, draft, startIso, endIso]);
 
-  // Compute concrete alternative rooms/slots when current selection is infeasible
   const concreteAlternatives = useMemo(() => {
     if (feasibility.isFeasible) return [];
     const results: Array<{
@@ -128,7 +127,6 @@ export function SmartBookingView() {
       reason: string;
     }> = [];
 
-    // 1. Check other rooms at the exact requested time
     for (const altRoom of state.rooms) {
       if (altRoom.id === draft.preferredRoomId) continue;
       const check = evaluateRequestFeasibility(
@@ -153,12 +151,11 @@ export function SmartBookingView() {
           roomName: altRoom.name,
           roomCap: altRoom.capacity,
           startTimeStr: draft.startTimeStr,
-          reason: `Same time (${draft.startTimeStr}), satisfies ${draft.expectedAttendance} seats & all ${draft.requiredFacilities.length} facilities`,
+          reason: `Same time (${draft.startTimeStr}) • Cap ${altRoom.capacity}`,
         });
       }
     }
 
-    // 2. Check other time slots on the same day
     const candidateTimes = ["09:00", "11:00", "13:30", "14:30", "16:00"];
     for (const tStr of candidateTimes) {
       if (tStr === draft.startTimeStr) continue;
@@ -187,7 +184,7 @@ export function SmartBookingView() {
             roomName: altRoom.name,
             roomCap: altRoom.capacity,
             startTimeStr: tStr,
-            reason: `Available at ${tStr} in ${altRoom.name} (Cap ${altRoom.capacity})`,
+            reason: `Slot ${tStr} • Cap ${altRoom.capacity}`,
           });
           if (results.length >= 4) return results;
         }
@@ -234,20 +231,57 @@ export function SmartBookingView() {
     }
   };
 
+  // Derive visual 6-gate status badges
+  const hasViolation = (codes: string[]) =>
+    feasibility.violations.some((v) => codes.includes(v.code));
+
+  const gateChecks = [
+    {
+      label: "Room Capacity",
+      passed: !hasViolation(["CAPACITY_INSUFFICIENT"]),
+    },
+    {
+      label: "Facilities",
+      passed: !hasViolation(["MISSING_FACILITY"]),
+    },
+    {
+      label: "Venue Slot",
+      passed: !hasViolation([
+        "ROOM_UNAVAILABLE_WINDOW",
+        "ROOM_OVERLAP_CONFLICT",
+      ]),
+    },
+    {
+      label: "Buffer Policy",
+      passed: !hasViolation([
+        "SETUP_CLEANUP_CONFLICT",
+        "TURNAROUND_BUFFER_VIOLATION",
+      ]),
+    },
+    {
+      label: "Equipment Pool",
+      passed: !hasViolation(["RESOURCE_UNAVAILABLE", "RESOURCE_INSUFFICIENT"]),
+    },
+    {
+      label: "Mentors",
+      passed: !hasViolation(["PERSON_UNAVAILABLE", "PERSON_OVERLAP"]),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Top Scenario Preset Bar for Instant Validation Testing */}
-      <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Top Scenario Preset Bar — Crisp 1-Click Test Pills */}
+      <div className="p-4 rounded-2xl ops-card border border-canvas-border flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-lg font-bold text-slate-100">
-            Smart Booking & Constraint Verification Engine
+            Smart Booking & Constraint Configurator
           </h1>
           <p className="text-xs text-slate-400">
-            Every change evaluates room capacity, facility infrastructure,
-            equipment pools, mentor commitments, setup/cleanup, and turnaround
-            buffers in real time.
+            Live verification across capacity, facilities, equipment, mentors,
+            and turnaround buffers.
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -280,10 +314,10 @@ export function SmartBookingView() {
                 overrideTurnaroundReason: "",
               })
             }
-            className="px-3 py-1.5 rounded-lg bg-accent-cyan/15 border border-accent-cyan/40 text-accent-cyanBright text-xs font-semibold hover:bg-accent-cyan/25 transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-xl bg-accent-cyan/15 border border-accent-cyan/40 text-accent-cyanBright text-xs font-semibold hover:bg-accent-cyan/25 transition-colors flex items-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Preset: Feasible Robotics Workshop (80p, 8 Kits)
+            Preset: Feasible Robotics (80p)
           </button>
 
           <button
@@ -291,14 +325,14 @@ export function SmartBookingView() {
             onClick={() =>
               setDraft((prev) => ({
                 ...prev,
-                preferredRoomId: "rm-lovelace-lab", // Cap 60
+                preferredRoomId: "rm-lovelace-lab",
                 expectedAttendance: 80,
                 startTimeStr: "14:00",
               }))
             }
-            className="px-3 py-1.5 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-xs text-amber-300 transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-amber-500/30 text-xs text-amber-300 transition-colors"
           >
-            Test: Insufficient Capacity (80p in Cap 60)
+            Test: Over Capacity (80p &gt; 60)
           </button>
 
           <button
@@ -308,13 +342,13 @@ export function SmartBookingView() {
                 ...prev,
                 preferredRoomId: "rm-turing-hall",
                 dateStr: DEMO_PRIMARY_DATE,
-                startTimeStr: "13:05", // setupStart 12:50 overlaps 13:00 turnaround of 11:00-12:30 workshop
+                startTimeStr: "13:05",
                 setupMinutes: 15,
               }))
             }
-            className="px-3 py-1.5 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-xs text-red-300 transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-red-500/30 text-xs text-red-300 transition-colors"
           >
-            Test: 15m Turnaround Violation
+            Test: 15m Buffer Clash
           </button>
         </div>
       </div>
@@ -323,18 +357,18 @@ export function SmartBookingView() {
         onSubmit={handleConfirm}
         className="grid grid-cols-1 lg:grid-cols-12 gap-6"
       >
-        {/* Left 7 Columns: Guided Specification Inputs */}
+        {/* Left 7 Columns: Clean Visual Inputs */}
         <div className="lg:col-span-7 space-y-5">
-          {/* 1. Event Identity & Priority */}
-          <div className="p-5 rounded-xl bg-canvas-elevated border border-canvas-border space-y-4">
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider">
-              1. Event Identity & Priority
+          {/* 1. Event Identity */}
+          <div className="p-5 rounded-2xl ops-card border border-canvas-border space-y-4">
+            <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              1. Event Identity
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="sm:col-span-2">
-                <label className="block text-xs text-slate-400 mb-1">
-                  Event Title *
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Event Title
                 </label>
                 <input
                   type="text"
@@ -343,13 +377,13 @@ export function SmartBookingView() {
                   onChange={(e) =>
                     setDraft((p) => ({ ...p, title: e.target.value }))
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-sm text-slate-100 focus:outline-none focus:border-accent-cyan"
+                  className="w-full px-3 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-sm font-medium text-slate-100 focus:outline-none focus:border-accent-cyan"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Priority Level
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Priority
                 </label>
                 <select
                   value={draft.priority}
@@ -359,7 +393,7 @@ export function SmartBookingView() {
                       priority: e.target.value as EventPriority,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-sm text-slate-100 focus:outline-none focus:border-accent-cyan"
+                  className="w-full px-3 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-sm font-mono text-slate-100 focus:outline-none focus:border-accent-cyan"
                 >
                   <option value="CRITICAL">CRITICAL</option>
                   <option value="HIGH">HIGH</option>
@@ -369,10 +403,10 @@ export function SmartBookingView() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Organizer / Club
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Organizer
                 </label>
                 <input
                   type="text"
@@ -380,12 +414,12 @@ export function SmartBookingView() {
                   onChange={(e) =>
                     setDraft((p) => ({ ...p, organizer: e.target.value }))
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-sm text-slate-100 focus:outline-none focus:border-accent-cyan"
+                  className="w-full px-3 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-xs text-slate-200 focus:outline-none focus:border-accent-cyan"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Event Category
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Category
                 </label>
                 <select
                   value={draft.category}
@@ -395,7 +429,7 @@ export function SmartBookingView() {
                       category: e.target.value as EventCategory,
                     }))
                   }
-                  className="w-full px-3 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-sm text-slate-100 focus:outline-none focus:border-accent-cyan"
+                  className="w-full px-3 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-200 focus:outline-none focus:border-accent-cyan"
                 >
                   <option value="WORKSHOP">WORKSHOP</option>
                   <option value="HACKATHON_SESSION">HACKATHON SESSION</option>
@@ -406,44 +440,32 @@ export function SmartBookingView() {
                 </select>
               </div>
             </div>
-
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">
-                Operational Description
-              </label>
-              <textarea
-                rows={2}
-                value={draft.description}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, description: e.target.value }))
-                }
-                className="w-full px-3 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs text-slate-200 focus:outline-none focus:border-accent-cyan"
-              />
-            </div>
           </div>
 
-          {/* 2. Schedule, Buffers & Room Selection */}
-          <div className="p-5 rounded-xl bg-canvas-elevated border border-canvas-border space-y-4">
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider flex items-center gap-2">
+          {/* 2. Schedule, Venue & Buffers */}
+          <div className="p-5 rounded-2xl ops-card border border-canvas-border space-y-4">
+            <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
               <Clock className="w-4 h-4 text-accent-cyanBright" />
-              2. Schedule, Venue & Buffer Policy
+              2. Schedule, Venue & Buffers
             </h2>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Date</label>
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Date
+                </label>
                 <input
                   type="date"
                   value={draft.dateStr}
                   onChange={(e) =>
                     setDraft((p) => ({ ...p, dateStr: e.target.value }))
                   }
-                  className="w-full px-2.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
+                  className="w-full px-2.5 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Start Time
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Start
                 </label>
                 <input
                   type="time"
@@ -451,12 +473,12 @@ export function SmartBookingView() {
                   onChange={(e) =>
                     setDraft((p) => ({ ...p, startTimeStr: e.target.value }))
                   }
-                  className="w-full px-2.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
+                  className="w-full px-2.5 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Duration (min)
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Duration
                 </label>
                 <select
                   value={draft.durationMinutes}
@@ -466,18 +488,18 @@ export function SmartBookingView() {
                       durationMinutes: Number(e.target.value),
                     }))
                   }
-                  className="w-full px-2.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
+                  className="w-full px-2.5 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
                 >
-                  <option value={45}>45 min</option>
-                  <option value={60}>60 min</option>
-                  <option value={90}>90 min</option>
-                  <option value={120}>120 min</option>
-                  <option value={180}>180 min</option>
+                  <option value={45}>45m</option>
+                  <option value={60}>60m</option>
+                  <option value={90}>90m</option>
+                  <option value={120}>120m</option>
+                  <option value={180}>180m</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Attendance
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Seats Needed
                 </label>
                 <input
                   type="number"
@@ -490,15 +512,15 @@ export function SmartBookingView() {
                       expectedAttendance: Math.max(1, Number(e.target.value)),
                     }))
                   }
-                  className="w-full px-2.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
+                  className="w-full px-2.5 py-2 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono font-bold text-slate-100"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-1">
-                <label className="block text-xs text-slate-400 mb-1">
-                  Setup Prep (min)
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Setup
                 </label>
                 <select
                   value={draft.setupMinutes}
@@ -508,17 +530,17 @@ export function SmartBookingView() {
                       setupMinutes: Number(e.target.value),
                     }))
                   }
-                  className="w-full px-2.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
+                  className="w-full px-2.5 py-1.5 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
                 >
-                  <option value={0}>0 min</option>
-                  <option value={10}>10 min</option>
-                  <option value={15}>15 min</option>
-                  <option value={30}>30 min</option>
+                  <option value={0}>0m</option>
+                  <option value={10}>10m</option>
+                  <option value={15}>15m</option>
+                  <option value={30}>30m</option>
                 </select>
               </div>
-              <div className="sm:col-span-1">
-                <label className="block text-xs text-slate-400 mb-1">
-                  Cleanup Teardown (min)
+              <div>
+                <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1">
+                  Cleanup
                 </label>
                 <select
                   value={draft.cleanupMinutes}
@@ -528,15 +550,15 @@ export function SmartBookingView() {
                       cleanupMinutes: Number(e.target.value),
                     }))
                   }
-                  className="w-full px-2.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
+                  className="w-full px-2.5 py-1.5 rounded-xl bg-canvas-surface border border-canvas-border text-xs font-mono text-slate-100"
                 >
-                  <option value={0}>0 min</option>
-                  <option value={10}>10 min</option>
-                  <option value={15}>15 min</option>
-                  <option value={30}>30 min</option>
+                  <option value={0}>0m</option>
+                  <option value={10}>10m</option>
+                  <option value={15}>15m</option>
+                  <option value={30}>30m</option>
                 </select>
               </div>
-              <div className="sm:col-span-1 flex items-end">
+              <div className="flex items-end">
                 <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pb-2">
                   <input
                     type="checkbox"
@@ -549,19 +571,24 @@ export function SmartBookingView() {
                     }
                     className="rounded border-canvas-border text-accent-cyan"
                   />
-                  Force 30m Heavy Turnaround
+                  <span>30m Heavy Gap</span>
                 </label>
               </div>
             </div>
 
+            {/* Visual Venue Selector Cards */}
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">
-                Preferred Campus Venue
+              <label className="block text-[11px] font-mono uppercase text-slate-400 mb-2">
+                Select Campus Venue
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {state.rooms.map((rm) => {
                   const selected = draft.preferredRoomId === rm.id;
                   const capOk = rm.capacity >= draft.expectedAttendance;
+                  const fillPct = Math.min(
+                    100,
+                    Math.round((draft.expectedAttendance / rm.capacity) * 100)
+                  );
                   return (
                     <button
                       type="button"
@@ -569,29 +596,34 @@ export function SmartBookingView() {
                       onClick={() =>
                         setDraft((p) => ({ ...p, preferredRoomId: rm.id }))
                       }
-                      className={`p-3 rounded-lg border text-left transition-all ${
+                      className={`p-3 rounded-xl border text-left transition-all ${
                         selected
-                          ? "bg-accent-cyan/15 border-accent-cyan text-slate-100"
-                          : "bg-canvas-surface hover:bg-canvas-hover border-canvas-border text-slate-300"
+                          ? "bg-accent-cyan/15 border-accent-cyan text-slate-100 shadow-md"
+                          : "bg-canvas-surface/80 hover:bg-canvas-hover border-canvas-border text-slate-300"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold">{rm.name}</span>
-                        <span className="font-mono text-[11px] text-slate-400">
+                        <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-elevated text-accent-cyanBright">
                           {rm.code}
                         </span>
-                      </div>
-                      <div className="mt-1 flex items-center justify-between text-[11px]">
                         <span
-                          className={
+                          className={`font-mono text-[11px] font-bold ${
                             capOk ? "text-emerald-400" : "text-red-400"
-                          }
+                          }`}
                         >
-                          Cap {rm.capacity}
+                          {draft.expectedAttendance}/{rm.capacity}
                         </span>
-                        <span className="text-slate-400 font-mono">
-                          {rm.customTurnaroundMinutes ?? 15}m policy
-                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-slate-100 mt-1.5 truncate">
+                        {rm.name}
+                      </div>
+                      <div className="mt-2 h-1 w-full rounded-full bg-canvas-elevated overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${
+                            capOk ? "bg-emerald-400" : "bg-red-500"
+                          }`}
+                          style={{ width: `${fillPct}%` }}
+                        />
                       </div>
                     </button>
                   );
@@ -599,12 +631,12 @@ export function SmartBookingView() {
               </div>
             </div>
 
-            {/* Required Room Facilities */}
+            {/* Facility Chips */}
             <div>
-              <label className="block text-xs text-slate-400 mb-1.5">
+              <label className="block text-[11px] font-mono uppercase text-slate-400 mb-2">
                 Required Room Facilities
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {ALL_FACILITIES.map((fac) => {
                   const active = draft.requiredFacilities.includes(fac);
                   return (
@@ -612,9 +644,9 @@ export function SmartBookingView() {
                       type="button"
                       key={fac}
                       onClick={() => toggleFacility(fac)}
-                      className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
+                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
                         active
-                          ? "bg-accent-cyan/20 border-accent-cyan text-accent-cyanBright font-medium"
+                          ? "bg-accent-cyan/20 border-accent-cyan text-accent-cyanBright font-semibold"
                           : "bg-canvas-surface border-canvas-border text-slate-400 hover:text-slate-200"
                       }`}
                     >
@@ -626,14 +658,14 @@ export function SmartBookingView() {
             </div>
           </div>
 
-          {/* 3. Equipment & Mentors */}
-          <div className="p-5 rounded-xl bg-canvas-elevated border border-canvas-border space-y-4">
-            <h2 className="text-sm font-semibold text-slate-100 uppercase tracking-wider flex items-center gap-2">
+          {/* 3. Equipment Steppers & Mentor Pills */}
+          <div className="p-5 rounded-2xl ops-card border border-canvas-border space-y-4">
+            <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
               <Cpu className="w-4 h-4 text-accent-cyanBright" />
-              3. Required Equipment & Mentors
+              3. Shared Equipment & Mentors
             </h2>
 
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {state.resources.map((res) => {
                 const reqEntry = draft.requiredResources.find(
                   (r) => r.resourceId === res.id
@@ -645,48 +677,52 @@ export function SmartBookingView() {
                   feasibility.computedIntervals.setupStartIso,
                   feasibility.computedIntervals.cleanupEndIso
                 );
+                const isEnough = availInfo.available >= qty;
 
                 return (
                   <div
                     key={res.id}
-                    className="p-3 rounded-lg bg-canvas-surface border border-canvas-border flex items-center justify-between gap-3"
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
+                      qty > 0
+                        ? "bg-accent-cyan/10 border-accent-cyan/40"
+                        : "bg-canvas-surface/80 border-canvas-border"
+                    }`}
                   >
-                    <div>
-                      <div className="text-xs font-semibold text-slate-100">
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-100 truncate">
                         {res.name}
                       </div>
-                      <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                        {res.sku} •{" "}
-                        <span
-                          className={
-                            availInfo.available >= qty
-                              ? "text-emerald-400"
-                              : "text-red-400"
-                          }
-                        >
-                          {availInfo.available} of {res.operationalQuantity}{" "}
-                          available for window
-                        </span>{" "}
-                        • {formatCurrency(res.replacementCostInr)}/unit
+                      <div
+                        className={`text-[11px] font-mono mt-0.5 ${
+                          isEnough ? "text-emerald-400" : "text-red-400"
+                        }`}
+                      >
+                        {availInfo.available}/{res.operationalQuantity} free
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        max={res.totalQuantity + 5}
-                        value={qty}
-                        onChange={(e) =>
-                          updateResourceQuantity(
-                            res.id,
-                            Math.max(0, Number(e.target.value))
-                          )
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateResourceQuantity(res.id, Math.max(0, qty - 1))
                         }
-                        aria-label={`Quantity for ${res.name}`}
-                        className="w-16 px-2 py-1 rounded bg-canvas-elevated border border-canvas-border text-xs font-mono text-center text-slate-100"
-                      />
-                      <span className="text-xs text-slate-400">units</span>
+                        className="w-7 h-7 rounded-lg bg-canvas-elevated border border-canvas-border flex items-center justify-center text-slate-300 hover:text-slate-100"
+                        aria-label={`Decrease ${res.name}`}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="w-7 text-center font-mono text-xs font-bold text-slate-100">
+                        {qty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateResourceQuantity(res.id, qty + 1)}
+                        className="w-7 h-7 rounded-lg bg-canvas-elevated border border-canvas-border flex items-center justify-center text-slate-300 hover:text-slate-100"
+                        aria-label={`Increase ${res.name}`}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -694,9 +730,9 @@ export function SmartBookingView() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-2 flex items-center gap-1.5">
+              <label className="block text-[11px] font-mono uppercase text-slate-400 mb-2 flex items-center gap-1.5">
                 <UserCheck className="w-3.5 h-3.5 text-accent-cyanBright" />
-                Required Mentors / Responsible Roles
+                Assign Mentors
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {state.people.map((person) => {
@@ -706,18 +742,23 @@ export function SmartBookingView() {
                       type="button"
                       key={person.id}
                       onClick={() => togglePerson(person.id)}
-                      className={`p-2.5 rounded-lg border text-left text-xs transition-colors ${
+                      className={`p-2.5 rounded-xl border text-left text-xs transition-all flex items-center justify-between ${
                         selected
                           ? "bg-accent-cyan/15 border-accent-cyan text-slate-100"
-                          : "bg-canvas-surface border-canvas-border text-slate-400 hover:text-slate-200"
+                          : "bg-canvas-surface/80 border-canvas-border text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      <div className="font-semibold text-slate-200">
-                        {person.name}
+                      <div className="truncate">
+                        <div className="font-bold text-slate-200 truncate">
+                          {person.name}
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {person.roleTitle}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-400">
-                        {person.roleTitle}
-                      </div>
+                      {selected && (
+                        <CheckCircle2 className="w-4 h-4 text-accent-cyanBright shrink-0" />
+                      )}
                     </button>
                   );
                 })}
@@ -726,134 +767,152 @@ export function SmartBookingView() {
           </div>
         </div>
 
-        {/* Right 5 Columns: Real-Time Deterministic Feasibility Verdict & Confirmation */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="sticky top-20 space-y-5">
-            {/* Explicit 3-State Verdict Banner */}
+        {/* Right 5 Columns: Live Visual Verdict & 6-Gate Matrix */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-28 space-y-4">
             <div
-              className={`p-5 rounded-xl border-2 shadow-xl ${
+              className={`p-5 rounded-2xl border-2 shadow-2xl space-y-4 ${
                 feasibility.status === "FEASIBLE"
-                  ? "bg-emerald-950/25 border-emerald-500/60"
+                  ? "ops-card border-emerald-500/60 ops-glow-emerald"
                   : feasibility.status === "ALTERNATIVES_AVAILABLE"
-                  ? "bg-amber-950/25 border-amber-500/60"
-                  : "bg-red-950/30 border-red-500/60"
+                  ? "ops-card border-amber-500/60 ops-glow-amber"
+                  : "ops-card border-red-500/60"
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
-                  Deterministic Engine State
-                </span>
-                <span className="font-mono text-xs text-slate-300">
-                  {feasibility.computedIntervals.setupStartIso.slice(11, 16)} –{" "}
-                  {feasibility.computedIntervals.turnaroundEndIso.slice(11, 16)}
-                </span>
-              </div>
-
-              <div className="mt-2 flex items-center gap-2.5">
+              {/* Status Header */}
+              <div className="flex items-center gap-3">
                 {feasibility.status === "FEASIBLE" && (
-                  <>
-                    <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
-                    <div>
-                      <div className="text-base font-bold text-emerald-300 font-mono">
-                        1. FEASIBLE
-                      </div>
-                      <div className="text-xs text-slate-300">
-                        All hard constraints satisfied. Ready to lock booking.
-                      </div>
-                    </div>
-                  </>
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
                 )}
-
                 {feasibility.status === "ALTERNATIVES_AVAILABLE" && (
-                  <>
-                    <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />
-                    <div>
-                      <div className="text-base font-bold text-amber-300 font-mono">
-                        2. ALTERNATIVES AVAILABLE
-                      </div>
-                      <div className="text-xs text-slate-300">
-                        Requested slot violates hard constraints, but valid
-                        alternatives exist below.
-                      </div>
-                    </div>
-                  </>
+                  <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                )}
+                {feasibility.status === "NO_FEASIBLE_PLAN" && (
+                  <div className="w-11 h-11 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
+                    <XCircle className="w-6 h-6" />
+                  </div>
                 )}
 
-                {feasibility.status === "NO_FEASIBLE_PLAN" && (
-                  <>
-                    <XCircle className="w-6 h-6 text-red-400 shrink-0" />
-                    <div>
-                      <div className="text-base font-bold text-red-300 font-mono">
-                        3. NO FEASIBLE PLAN
-                      </div>
-                      <div className="text-xs text-slate-300">
-                        Blocking hard constraints prevent any valid allocation
-                        on this date.
-                      </div>
-                    </div>
-                  </>
-                )}
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    Live Feasibility Verdict
+                  </div>
+                  <div
+                    className={`text-lg font-bold font-mono ${
+                      feasibility.status === "FEASIBLE"
+                        ? "text-emerald-300"
+                        : feasibility.status === "ALTERNATIVES_AVAILABLE"
+                        ? "text-amber-300"
+                        : "text-red-300"
+                    }`}
+                  >
+                    {feasibility.status.replace(/_/g, " ")}
+                  </div>
+                </div>
               </div>
 
-              {/* Interval Envelope Breakdown */}
-              <div className="mt-4 p-3 rounded-lg bg-canvas-elevated/90 border border-canvas-border grid grid-cols-4 gap-2 text-center font-mono text-[11px]">
-                <div>
-                  <div className="text-slate-400">Setup</div>
-                  <div className="text-slate-200 font-semibold">
-                    {feasibility.computedIntervals.setupStartIso.slice(11, 16)}
+              {/* Visual 6-Constraint Check Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {gateChecks.map((g) => (
+                  <div
+                    key={g.label}
+                    className={`px-3 py-2 rounded-xl border text-xs flex items-center justify-between ${
+                      g.passed
+                        ? "bg-emerald-950/25 border-emerald-500/30 text-emerald-200"
+                        : "bg-red-950/40 border-red-500/40 text-red-200 font-semibold"
+                    }`}
+                  >
+                    <span>{g.label}</span>
+                    {g.passed ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    )}
                   </div>
-                </div>
-                <div>
-                  <div className="text-accent-cyanBright">Event</div>
-                  <div className="text-slate-100 font-bold">
-                    {feasibility.computedIntervals.startIso.slice(11, 16)}–
-                    {feasibility.computedIntervals.endIso.slice(11, 16)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-slate-400">Cleanup</div>
-                  <div className="text-slate-200 font-semibold">
-                    {feasibility.computedIntervals.cleanupEndIso.slice(11, 16)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-amber-300">
-                    +{feasibility.computedIntervals.turnaroundMinutes}m Gap
-                  </div>
-                  <div className="text-amber-200 font-semibold">
+                ))}
+              </div>
+
+              {/* Visual 4-Segment Timeline Envelope */}
+              <div className="p-3 rounded-xl bg-canvas-surface/90 border border-canvas-border space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase">
+                  <span>Protected Envelope</span>
+                  <span className="text-slate-200">
+                    {feasibility.computedIntervals.setupStartIso.slice(11, 16)}{" "}
+                    –{" "}
                     {feasibility.computedIntervals.turnaroundEndIso.slice(
                       11,
                       16
                     )}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 text-center font-mono text-[11px]">
+                  <div className="p-1.5 rounded-lg bg-canvas-elevated border border-canvas-border">
+                    <div className="text-[9px] text-slate-400">SETUP</div>
+                    <div className="text-slate-200 font-bold">
+                      {feasibility.computedIntervals.setupStartIso.slice(
+                        11,
+                        16
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-accent-cyan/15 border border-accent-cyan/40">
+                    <div className="text-[9px] text-accent-cyanBright">
+                      EVENT
+                    </div>
+                    <div className="text-slate-100 font-bold">
+                      {feasibility.computedIntervals.startIso.slice(11, 16)}–
+                      {feasibility.computedIntervals.endIso.slice(11, 16)}
+                    </div>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-canvas-elevated border border-canvas-border">
+                    <div className="text-[9px] text-slate-400">CLEAN</div>
+                    <div className="text-slate-200 font-bold">
+                      {feasibility.computedIntervals.cleanupEndIso.slice(
+                        11,
+                        16
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30">
+                    <div className="text-[9px] text-amber-300">
+                      +{feasibility.computedIntervals.turnaroundMinutes}m GAP
+                    </div>
+                    <div className="text-amber-200 font-bold">
+                      {feasibility.computedIntervals.turnaroundEndIso.slice(
+                        11,
+                        16
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Blocking Hard Constraint Violations */}
+              {/* Blocking Violations */}
               {feasibility.violations.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-red-300">
-                    Blocking Hard Constraints ({feasibility.violations.length})
-                  </div>
+                <div className="space-y-1.5">
                   {feasibility.violations.map((v, i) => (
                     <div
                       key={i}
-                      className="p-2.5 rounded-lg bg-red-950/50 border border-red-500/40 text-xs text-red-200"
+                      className="p-2.5 rounded-xl bg-red-950/50 border border-red-500/40 text-xs text-red-100 flex items-start gap-2"
                     >
-                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 mr-1.5">
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 shrink-0 mt-0.5">
                         {v.code}
                       </span>
-                      {v.message}
+                      <span className="leading-snug">{v.message}</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Concrete One-Click Valid Alternatives */}
+              {/* One-Click Feasible Alternatives */}
               {concreteAlternatives.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-                    Verified Feasible Alternatives (Click to Apply)
+                <div className="space-y-2">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-amber-300 font-semibold">
+                    1-Click Feasible Fixes
                   </div>
                   {concreteAlternatives.map((alt, idx) => (
                     <button
@@ -866,17 +925,17 @@ export function SmartBookingView() {
                           startTimeStr: alt.startTimeStr,
                         }))
                       }
-                      className="w-full p-2.5 rounded-lg bg-canvas-elevated hover:bg-canvas-hover border border-amber-500/40 text-left text-xs transition-colors flex items-center justify-between gap-2"
+                      className="w-full p-2.5 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-amber-500/40 text-left text-xs transition-colors flex items-center justify-between gap-2"
                     >
                       <div>
-                        <div className="font-semibold text-slate-100">
-                          {alt.roomName} @ {alt.startTimeStr}
+                        <div className="font-bold text-slate-100">
+                          {alt.roomName}
                         </div>
-                        <div className="text-[11px] text-slate-300">
+                        <div className="text-[11px] font-mono text-slate-400">
                           {alt.reason}
                         </div>
                       </div>
-                      <span className="text-xs font-mono text-accent-cyanBright shrink-0 flex items-center gap-1">
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-200 font-mono text-[11px] font-bold flex items-center gap-1 shrink-0">
                         Apply <ArrowRight className="w-3 h-3" />
                       </span>
                     </button>
@@ -884,63 +943,45 @@ export function SmartBookingView() {
                 </div>
               )}
 
-              {/* Suitability Verification Reasons */}
-              {feasibility.suitabilityReasons.length > 0 && (
-                <div className="mt-4 space-y-1.5">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                    Verified Suitability Checks
-                  </div>
-                  {feasibility.suitabilityReasons.map((reason, idx) => (
-                    <div
-                      key={idx}
-                      className="text-xs text-slate-300 flex items-start gap-2"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                      <span>{reason}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="mt-5 pt-4 border-t border-canvas-border flex flex-col sm:flex-row items-center gap-2.5">
+              {/* Primary Action Buttons */}
+              <div className="pt-2 flex items-center gap-2">
                 <button
                   type="submit"
                   disabled={!feasibility.isFeasible}
-                  className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
                     feasibility.isFeasible
-                      ? "bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 shadow-lg shadow-accent-cyan/20 cursor-pointer"
-                      : "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed"
+                      ? "bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 shadow-lg shadow-accent-cyan/25 cursor-pointer"
+                      : "bg-slate-800/80 text-slate-500 border border-slate-700 cursor-not-allowed"
                   }`}
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   {feasibility.isFeasible
-                    ? "Confirm & Allocate Feasible Plan"
-                    : "Confirmation Locked (Hard Constraint Violation)"}
+                    ? "Confirm & Lock Allocation"
+                    : "Locked — Resolve Conflict"}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
                     setSavedDraftNote(
-                      `Draft "${draft.title}" saved locally at ${new Date().toLocaleTimeString()}.`
+                      `Saved at ${new Date().toLocaleTimeString()}`
                     );
                     pushToast({
                       type: "INFO",
-                      title: "Draft Request Saved",
-                      detail: `"${draft.title}" stored in session draft state.`,
+                      title: "Draft Saved",
+                      detail: `"${draft.title}" stored locally.`,
                     });
                   }}
-                  className="w-full sm:w-auto px-3.5 py-2.5 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-xs font-medium text-slate-200 flex items-center justify-center gap-1.5 shrink-0"
+                  className="p-3 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-accent-cyanBright"
+                  title="Save Draft"
                 >
-                  <BookmarkCheck className="w-4 h-4 text-accent-cyanBright" />
-                  Save Draft
+                  <BookmarkCheck className="w-4 h-4" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setDraft(createDefaultDraft(selectedDate))}
-                  className="p-2.5 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-400 hover:text-slate-200"
+                  className="p-3 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-400 hover:text-slate-200"
                   title="Reset Form"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -948,7 +989,7 @@ export function SmartBookingView() {
               </div>
 
               {savedDraftNote && (
-                <div className="mt-2 text-[11px] font-mono text-accent-cyanBright">
+                <div className="text-[11px] font-mono text-accent-cyanBright text-center">
                   {savedDraftNote}
                 </div>
               )}

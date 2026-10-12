@@ -12,10 +12,11 @@ import {
   Users,
   Zap,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 
 export function ImpactView() {
-  const { state, selectedDate } = useAutopilot();
+  const { state, selectedDate, setActiveSection } = useAutopilot();
 
   const confirmedBookings = state.bookings.filter(
     (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
@@ -49,7 +50,6 @@ export function ImpactView() {
     return sum + (res?.replacementCostInr ?? 0) * a.quantity;
   }, 0);
 
-  // Compute room utilization on selectedDate (out of 11 operational hours = 660 mins per room)
   const roomUtilization = state.rooms.map((rm) => {
     const dayBkgs = state.bookings.filter(
       (b) =>
@@ -93,85 +93,80 @@ export function ImpactView() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-5 rounded-2xl ops-card border border-canvas-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-accent-cyan/15 text-accent-cyanBright border border-accent-cyan/30 font-mono text-[11px]">
-              VERIFIED TELEMETRY VS DOCUMENTED ESTIMATES
-            </span>
-          </div>
-          <h1 className="text-lg font-bold text-slate-100 mt-1">
-            Campus Impact, Resource Circulation & Space Utilization
+          <span className="px-2.5 py-0.5 rounded-full bg-accent-cyan/15 text-accent-cyanBright border border-accent-cyan/30 font-mono text-[10px] font-bold">
+            VERIFIED TELEMETRY • STATE v{state.stateVersion}
+          </span>
+          <h1 className="text-xl font-bold text-slate-100 mt-1.5">
+            Campus Impact & Space Utilization
           </h1>
-          <p className="text-xs text-slate-400">
-            All metrics are computed directly from authoritative state records (
-            v{state.stateVersion}) in the simulated HackSAC 2026 environment.
-          </p>
         </div>
       </div>
 
-      {/* Top 4 Telemetry Cards with Explicit Measurement vs Estimate Labels */}
+      {/* Top 4 Telemetry Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border">
+        <div className="p-4 rounded-2xl ops-card border border-canvas-border">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-accent-cyan/15 text-accent-cyanBright">
-              RECORDED IN STATE
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-accent-cyan/15 text-accent-cyanBright">
+              BOOKINGS
             </span>
             <Building2 className="w-4 h-4 text-accent-cyanBright" />
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-slate-100">
-            {confirmedBookings.length} Active / {cancelledBookings.length}{" "}
-            Cancelled
+          <div className="mt-2.5 text-3xl font-mono font-bold text-slate-100">
+            {confirmedBookings.length}
+            <span className="text-sm text-slate-400 font-normal ml-1.5">
+              active ({cancelledBookings.length} cancelled)
+            </span>
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Total campus bookings tracked ({conflicts.length} active conflicts)
+            {conflicts.length} unresolved conflicts
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border">
+        <div className="p-4 rounded-2xl ops-card border border-canvas-border">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">
-              DOCUMENTED ESTIMATE
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300">
+              COST AVOIDED
             </span>
             <Recycle className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-emerald-300">
+          <div className="mt-2.5 text-3xl font-mono font-bold text-emerald-300">
             {formatCurrency(estimatedCostAvoidedInr)}
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Estimated procurement avoided via {totalUnitsReused} reused asset
-            units
+            {totalUnitsReused} asset units circulated
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border">
+        <div className="p-4 rounded-2xl ops-card border border-canvas-border">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-accent-cyan/15 text-accent-cyanBright">
-              RECORDED IN STATE
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-accent-cyan/15 text-accent-cyanBright">
+              ATTENDANCE
             </span>
             <Users className="w-4 h-4 text-accent-cyanBright" />
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-slate-100">
-            {totalVerified} / {totalExpected}
+          <div className="mt-2.5 text-3xl font-mono font-bold text-slate-100">
+            {totalVerified}
+            <span className="text-base text-slate-500">/{totalExpected}</span>
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Verified vs expected attendance across {verifiedEvents.length}{" "}
-            audited sessions
+            Verified across {verifiedEvents.length} completed sessions
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border">
+        <div className="p-4 rounded-2xl ops-card border border-canvas-border">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-accent-cyan/15 text-accent-cyanBright">
-              RECORDED IN STATE
+            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
+              RECOVERIES
             </span>
             <Zap className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="mt-2 text-2xl font-mono font-bold text-slate-100">
-            {state.approvals.length} Recoveries
+          <div className="mt-2.5 text-3xl font-mono font-bold text-slate-100">
+            {state.approvals.length}
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Approved Shockwave reconfiguration plans committed in session
+            Approved Shockwave reconfigurations
           </div>
         </div>
       </div>
@@ -179,46 +174,41 @@ export function ImpactView() {
       {/* 2-Column Analytical Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Room Slot Utilization Bars (7 cols) */}
-        <div className="lg:col-span-7 rounded-xl bg-canvas-elevated border border-canvas-border p-5 space-y-4">
+        <div className="lg:col-span-7 rounded-2xl ops-card border border-canvas-border p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-accent-cyanBright" />
-                Space Slot Utilization ({selectedDate} • 08:00–19:00 Window)
-              </h2>
-              <p className="text-xs text-slate-400">
-                Includes setup, core event, cleanup, and mandatory 15m/30m
-                turnaround buffers
-              </p>
-            </div>
+            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-accent-cyanBright" />
+              Venue Utilization ({selectedDate} • 08:00–19:00)
+            </h2>
+            <span className="text-[11px] font-mono text-slate-400">
+              Includes buffers
+            </span>
           </div>
 
           <div className="space-y-3.5">
             {roomUtilization.map((item) => (
               <div key={item.room.id} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-200">
-                    {item.room.name}{" "}
-                    <span className="font-mono text-slate-400">
-                      ({item.room.code} • Cap {item.room.capacity})
+                  <span className="font-semibold text-slate-200 flex items-center gap-2">
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-surface border border-canvas-border text-accent-cyanBright">
+                      {item.room.code}
                     </span>
+                    {item.room.name}
                   </span>
                   <span className="font-mono text-slate-300">
-                    {item.occupiedMinutes}m booked ({item.pct}%)
-                    {item.lockMins > 0 ? ` • ${item.lockMins}m locked` : ""}
+                    {item.pct}% booked
+                    {item.lockMins > 0 ? ` • ${item.lockPct}% outage` : ""}
                   </span>
                 </div>
-                <div className="h-3 w-full rounded-full bg-canvas-surface border border-canvas-border overflow-hidden flex">
+                <div className="h-2.5 w-full rounded-full bg-canvas-surface border border-canvas-border overflow-hidden flex">
                   <div
                     style={{ width: `${item.pct}%` }}
                     className="h-full bg-accent-cyan transition-all"
-                    title={`Booked + Turnaround: ${item.pct}%`}
                   />
                   {item.lockPct > 0 && (
                     <div
                       style={{ width: `${item.lockPct}%` }}
-                      className="h-full bg-red-500/70 transition-all"
-                      title={`Unavailable Lock: ${item.lockPct}%`}
+                      className="h-full bg-red-500/80 transition-all"
                     />
                   )}
                 </div>
@@ -228,24 +218,27 @@ export function ImpactView() {
         </div>
 
         {/* Shockwave Recovery History & Reuse Breakdown (5 cols) */}
-        <div className="lg:col-span-5 rounded-xl bg-canvas-elevated border border-canvas-border p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+        <div className="lg:col-span-5 rounded-2xl ops-card border border-canvas-border p-5 space-y-4">
+          <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            Disruption Recovery Ledger ({state.approvals.length})
+            Shockwave Recovery Ledger ({state.approvals.length})
           </h2>
 
           {state.approvals.length === 0 ? (
-            <div className="p-4 rounded-lg bg-canvas-surface border border-canvas-border text-xs text-slate-400 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-              <span>
-                No Shockwave recovery approvals recorded yet in this session.
-                Trigger a disruption in{" "}
-                <strong className="text-slate-200">Campus Shockwave</strong> and
-                approve a candidate plan to measure reconfiguration deltas here.
-              </span>
+            <div className="p-4 rounded-xl bg-canvas-surface/80 border border-canvas-border text-xs text-slate-400 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>No recoveries committed yet.</span>
+              </div>
+              <button
+                onClick={() => setActiveSection("SHOCKWAVE")}
+                className="text-accent-cyanBright font-semibold hover:underline shrink-0"
+              >
+                Open Shockwave →
+              </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {state.approvals.map((appr) => {
                 const ev = state.events.find(
                   (e) => e.id === appr.targetEventId
@@ -253,29 +246,24 @@ export function ImpactView() {
                 return (
                   <div
                     key={appr.id}
-                    className="p-3.5 rounded-lg bg-canvas-surface border border-emerald-500/30 space-y-2 text-xs"
+                    className="p-3.5 rounded-xl bg-canvas-surface/90 border border-emerald-500/30 space-y-1.5 text-xs"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-emerald-300">
-                        {ev?.title ?? appr.targetEventId}
-                      </span>
-                      <span className="font-mono text-[11px] text-slate-400">
-                        {appr.deltas.length} changes applied
-                      </span>
+                    <div className="font-bold text-emerald-300 truncate">
+                      {ev?.title ?? appr.targetEventId}
                     </div>
-                    <div className="text-slate-300">
-                      Relocated from{" "}
-                      <strong>{appr.beforeSnapshot.roomName}</strong> (
-                      {formatTimeRange(
-                        appr.beforeSnapshot.startIso,
-                        appr.beforeSnapshot.endIso
-                      )}
-                      ) to <strong>{appr.afterSnapshot.roomName}</strong> (
-                      {formatTimeRange(
-                        appr.afterSnapshot.startIso,
-                        appr.afterSnapshot.endIso
-                      )}
-                      ).
+                    <div className="flex items-center gap-2 font-mono text-[11px] text-slate-300">
+                      <span className="line-through text-slate-500">
+                        {appr.beforeSnapshot.roomName}
+                      </span>
+                      <ArrowRight className="w-3 h-3 text-accent-cyanBright" />
+                      <span className="text-emerald-300 font-semibold">
+                        {appr.afterSnapshot.roomName} (
+                        {formatTimeRange(
+                          appr.afterSnapshot.startIso,
+                          appr.afterSnapshot.endIso
+                        )}
+                        )
+                      </span>
                     </div>
                   </div>
                 );
@@ -284,8 +272,8 @@ export function ImpactView() {
           )}
 
           <div className="pt-3 border-t border-canvas-border space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Documented Asset Reuse Valuation
+            <h3 className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
+              Asset Reuse Breakdown
             </h3>
             {state.resources.map((res) => {
               const allocs = activeAllocations.filter(
@@ -296,12 +284,13 @@ export function ImpactView() {
               return (
                 <div
                   key={res.id}
-                  className="flex items-center justify-between text-xs py-1 border-b border-canvas-border/50 last:border-b-0"
+                  className="flex items-center justify-between text-xs py-1.5 border-b border-canvas-border/50 last:border-b-0"
                 >
-                  <span className="text-slate-300 truncate">
-                    {res.name} (×{units})
+                  <span className="text-slate-200 truncate">
+                    {res.name}{" "}
+                    <span className="font-mono text-slate-400">×{units}</span>
                   </span>
-                  <span className="font-mono text-emerald-300 shrink-0 ml-2">
+                  <span className="font-mono text-emerald-300 font-semibold shrink-0 ml-2">
                     {formatCurrency(units * res.replacementCostInr)}
                   </span>
                 </div>

@@ -2,18 +2,17 @@
 
 import React, { useMemo, useState } from "react";
 import { useAutopilot } from "@/context/AutopilotContext";
-import { ResourceCategory, ResourceCondition } from "@/domain/types";
 import { formatCurrency, formatTimeRange } from "@/lib/utils";
 import {
   Search,
   Filter,
-  Cpu,
   CheckCircle2,
   AlertTriangle,
   PackageCheck,
   Wrench,
   CalendarPlus,
   Recycle,
+  Building2,
 } from "lucide-react";
 
 export function InventoryView() {
@@ -69,37 +68,31 @@ export function InventoryView() {
   return (
     <div className="space-y-6">
       {/* Top Reuse & Catalog Summary Bar */}
-      <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl ops-card border border-canvas-border flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono text-[11px]">
-              CIRCULATING CAMPUS ASSETS
-            </span>
-          </div>
-          <h1 className="text-lg font-bold text-slate-100 mt-1">
-            Resource Inventory & Return Verification Ledger
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono text-[10px] font-bold">
+            CIRCULATING CAMPUS INVENTORY
+          </span>
+          <h1 className="text-xl font-bold text-slate-100 mt-1.5">
+            Shared Equipment Pool & Return Ledger
           </h1>
-          <p className="text-xs text-slate-400">
-            Derived availability from active reservations, checkout tracking,
-            damage/missing reporting, and documented procurement cost avoidance.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
-          <div className="px-3.5 py-2 rounded-lg bg-canvas-surface border border-canvas-border">
+          <div className="px-4 py-2.5 rounded-xl bg-canvas-surface border border-canvas-border">
             <div className="text-[10px] text-slate-400 uppercase">
-              Total Catalog Asset Value
+              Catalog Value
             </div>
-            <div className="text-sm font-bold text-slate-100">
+            <div className="text-base font-bold text-slate-100">
               {formatCurrency(totalCatalogValueInr)}
             </div>
           </div>
-          <div className="px-3.5 py-2 rounded-lg bg-emerald-950/30 border border-emerald-500/40">
+          <div className="px-4 py-2.5 rounded-xl bg-emerald-950/35 border border-emerald-500/40">
             <div className="text-[10px] text-emerald-300 uppercase flex items-center gap-1">
               <Recycle className="w-3 h-3" />
-              Purchase Cost Avoided via Reuse
+              Cost Avoided via Reuse
             </div>
-            <div className="text-sm font-bold text-emerald-300">
+            <div className="text-base font-bold text-emerald-300">
               {formatCurrency(totalReusedValueInr)}
             </div>
           </div>
@@ -114,13 +107,13 @@ export function InventoryView() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by SKU, equipment name, or custodian role..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-canvas-elevated border border-canvas-border text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent-cyan"
+            placeholder="Search SKU, equipment, or custodian..."
+            className="w-full pl-9 pr-3 py-2 rounded-xl ops-card border border-canvas-border text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-accent-cyan"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-slate-400 mr-1" />
           {(
             [
               "ALL",
@@ -133,10 +126,10 @@ export function InventoryView() {
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
                 categoryFilter === cat
-                  ? "bg-accent-cyan text-slate-950 border-accent-cyan font-semibold"
-                  : "bg-canvas-elevated border-canvas-border text-slate-300 hover:text-slate-100"
+                  ? "bg-accent-cyan text-slate-950 border-accent-cyan font-bold"
+                  : "ops-card border-canvas-border text-slate-300 hover:text-slate-100"
               }`}
             >
               {cat.replace(/_/g, " ")}
@@ -145,10 +138,10 @@ export function InventoryView() {
         </div>
       </div>
 
-      {/* Main Catalog Grid + Detailed Resource Inspector & Return Ledger */}
+      {/* Main Catalog Grid + Detailed Resource Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 7 Columns: Catalog Cards */}
-        <div className="lg:col-span-7 space-y-3">
+        {/* Left 7 Columns: Visual Catalog Cards */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5 content-start">
           {filteredResources.map((res) => {
             const isSelected = focusedResource?.id === res.id;
             const homeRoom = state.rooms.find(
@@ -159,93 +152,85 @@ export function InventoryView() {
                 a.resourceId === res.id &&
                 (a.status === "RESERVED" || a.status === "CHECKED_OUT")
             );
-            const committedUnits = activeAllocs.reduce(
-              (s, a) => s + a.quantity,
-              0
+            const opPct = Math.round(
+              (res.operationalQuantity / Math.max(1, res.totalQuantity)) * 100
             );
 
             return (
               <div
                 key={res.id}
                 onClick={() => setSelectedResourceId(res.id)}
-                className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
                   isSelected
-                    ? "bg-canvas-surface border-accent-cyan shadow-lg"
-                    : "bg-canvas-elevated hover:bg-canvas-surface border-canvas-border"
+                    ? "ops-card border-accent-cyan ops-glow-cyan"
+                    : "ops-card border-canvas-border hover:border-canvas-borderStrong"
                 }`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-canvas-elevated border border-canvas-border text-accent-cyanBright">
-                        {res.sku}
-                      </span>
-                      <span className="text-xs text-slate-400 uppercase font-mono">
-                        {res.category.replace(/_/g, " ")}
-                      </span>
-                      <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                          res.condition === "OPTIMAL" ||
-                          res.condition === "GOOD"
-                            ? "bg-emerald-500/15 text-emerald-300"
-                            : "bg-amber-500/20 text-amber-300"
-                        }`}
-                      >
-                        {res.condition}
-                      </span>
-                    </div>
-                    <h3 className="text-base font-semibold text-slate-100 mt-1">
-                      {res.name}
-                    </h3>
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-canvas-surface border border-canvas-border text-accent-cyanBright">
+                      {res.sku}
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${
+                        res.condition === "OPTIMAL" || res.condition === "GOOD"
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : "bg-amber-500/20 text-amber-300"
+                      }`}
+                    >
+                      {res.condition}
+                    </span>
                   </div>
 
-                  <div className="text-right font-mono">
-                    <div className="text-lg font-bold text-slate-100">
-                      {res.operationalQuantity}{" "}
-                      <span className="text-xs font-normal text-slate-400">
-                        / {res.totalQuantity} op
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {formatCurrency(res.replacementCostInr)} / unit
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-bold text-slate-100 mt-2">
+                    {res.name}
+                  </h3>
                 </div>
 
-                <p className="text-xs text-slate-400 mt-2">{res.notes}</p>
-
-                <div className="mt-3 pt-2.5 border-t border-canvas-border flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-4 text-slate-300">
-                    <span>
-                      Base: <strong>{homeRoom?.code ?? res.locationRoomId}</strong>
-                    </span>
-                    <span>
-                      Custodian: <strong>{res.ownerRole}</strong>
-                    </span>
-                    <span className="font-mono text-accent-cyanBright">
-                      {activeAllocs.length} active reservations ({committedUnits}{" "}
-                      units)
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-baseline justify-between font-mono">
+                    <span className="text-xs text-slate-400">Active Pool</span>
+                    <span className="text-base font-bold text-slate-100">
+                      {res.operationalQuantity}
+                      <span className="text-xs text-slate-500">
+                        /{res.totalQuantity}
+                      </span>
                     </span>
                   </div>
 
-                  <span className="text-[11px] text-emerald-300 font-medium flex items-center gap-1">
-                    <Recycle className="w-3.5 h-3.5" />
-                    Reuse Ready (No Purchase Needed)
-                  </span>
+                  <div className="h-1.5 w-full rounded-full bg-canvas-surface overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        opPct === 100 ? "bg-emerald-400" : "bg-amber-400"
+                      }`}
+                      style={{ width: `${opPct}%` }}
+                    />
+                  </div>
+
+                  <div className="pt-2 border-t border-canvas-border/60 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-slate-500" />
+                      {homeRoom?.code ?? res.locationRoomId}
+                    </span>
+                    <span className="text-accent-cyanBright">
+                      {activeAllocs.length} reservations
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Right 5 Columns: Selected Resource Detail, Return Actions & Condition Control */}
+        {/* Right 5 Columns: Selected Resource Detail & Return Verification */}
         <div className="lg:col-span-5">
           {focusedResource && (
-            <div className="sticky top-20 rounded-xl bg-canvas-elevated border border-canvas-border p-5 space-y-5">
+            <div className="sticky top-28 rounded-2xl ops-card border border-canvas-border p-5 space-y-4">
               <div className="flex items-start justify-between border-b border-canvas-border pb-3.5">
                 <div>
                   <span className="font-mono text-xs text-accent-cyanBright">
-                    {focusedResource.sku}
+                    {focusedResource.sku} •{" "}
+                    {formatCurrency(focusedResource.replacementCostInr)}/unit
                   </span>
                   <h2 className="text-base font-bold text-slate-100 mt-0.5">
                     {focusedResource.name}
@@ -264,23 +249,23 @@ export function InventoryView() {
                     });
                     setActiveSection("SMART_BOOKING");
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-accent-cyan text-slate-950 font-bold text-xs flex items-center gap-1.5 hover:bg-accent-cyanBright transition-colors shrink-0"
+                  className="px-3 py-2 rounded-xl bg-accent-cyan text-slate-950 font-bold text-xs flex items-center gap-1.5 hover:bg-accent-cyanBright transition-colors shrink-0"
                 >
                   <CalendarPlus className="w-3.5 h-3.5" />
-                  Request & Allocate
+                  Allocate
                 </button>
               </div>
 
-              {/* Operational Pool & Condition Controls */}
-              <div className="p-3.5 rounded-lg bg-canvas-surface border border-canvas-border space-y-3">
+              {/* Operational Pool Controls */}
+              <div className="p-3.5 rounded-xl bg-canvas-surface/90 border border-canvas-border space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-200 flex items-center gap-1.5">
                     <Wrench className="w-3.5 h-3.5 text-amber-400" />
-                    Custodian Pool & Condition Control
+                    Pool Control
                   </span>
-                  <span className="font-mono text-slate-300">
+                  <span className="font-mono text-slate-300 font-bold">
                     {focusedResource.operationalQuantity}/
-                    {focusedResource.totalQuantity} units active
+                    {focusedResource.totalQuantity} units
                   </span>
                 </div>
 
@@ -294,7 +279,7 @@ export function InventoryView() {
                         "Full pool verified optimal by lab custodian"
                       )
                     }
-                    className="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
                   >
                     Restore Full Pool ({focusedResource.totalQuantity})
                   </button>
@@ -307,18 +292,18 @@ export function InventoryView() {
                         "1 unit moved to bench maintenance"
                       )
                     }
-                    className="px-2.5 py-1 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-medium"
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-medium"
                   >
-                    Flag 1 Unit Maintenance
+                    Quarantine 1 Unit
                   </button>
                 </div>
               </div>
 
-              {/* Reservations & Return / Damage Ledger */}
+              {/* Reservations & Return Ledger */}
               <div className="space-y-2.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <PackageCheck className="w-3.5 h-3.5 text-accent-cyanBright" />
-                  Reservations, Checkouts & Return History
+                  Checkouts & Return Verification
                 </h3>
 
                 {state.resourceAllocations
@@ -332,24 +317,23 @@ export function InventoryView() {
                     return (
                       <div
                         key={alloc.id}
-                        className="p-3 rounded-lg bg-canvas-surface border border-canvas-border space-y-2 text-xs"
+                        className="p-3 rounded-xl bg-canvas-surface/90 border border-canvas-border space-y-2 text-xs"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-slate-100">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-100 truncate">
                             {ev?.title ?? alloc.eventId}
                           </span>
-                          <span className="font-mono font-bold text-accent-cyanBright">
-                            ×{alloc.quantity} units
+                          <span className="font-mono font-bold text-accent-cyanBright shrink-0">
+                            ×{alloc.quantity}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
                           <span>
-                            {alloc.startIso.slice(0, 10)} •{" "}
                             {formatTimeRange(alloc.startIso, alloc.endIso)}
                           </span>
                           <span
-                            className={`px-1.5 py-0.5 rounded ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] ${
                               alloc.status === "RETURNED"
                                 ? "bg-emerald-500/15 text-emerald-300"
                                 : alloc.status === "DAMAGED_ON_RETURN" ||
@@ -362,12 +346,6 @@ export function InventoryView() {
                           </span>
                         </div>
 
-                        {alloc.conditionReport && (
-                          <div className="text-[11px] text-slate-300 italic">
-                            Note: &ldquo;{alloc.conditionReport}&rdquo;
-                          </div>
-                        )}
-
                         {isActive && (
                           <div className="pt-2 border-t border-canvas-border/60 flex flex-wrap items-center gap-1.5">
                             <button
@@ -375,40 +353,39 @@ export function InventoryView() {
                                 updateAllocationStatus(
                                   alloc.id,
                                   "RETURNED",
-                                  `All ${alloc.quantity} units returned in optimal working order`
+                                  `All ${alloc.quantity} units returned optimal`
                                 )
                               }
-                              className="px-2 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium flex items-center gap-1"
+                              className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium flex items-center gap-1"
                             >
                               <CheckCircle2 className="w-3 h-3" />
-                              Record Returned Optimal
+                              Returned OK
                             </button>
                             <button
                               onClick={() =>
                                 updateAllocationStatus(
                                   alloc.id,
                                   "DAMAGED_ON_RETURN",
-                                  "1 unit returned with damaged connector; deducted from operational pool",
+                                  "1 unit returned damaged",
                                   1
                                 )
                               }
-                              className="px-2 py-1 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-medium flex items-center gap-1"
+                              className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-medium flex items-center gap-1"
                             >
-                              <AlertTriangle className="w-3 h-3" />
-                              Report 1 Damaged
+                              <AlertTriangle className="w-3 h-3" />1 Damaged
                             </button>
                             <button
                               onClick={() =>
                                 updateAllocationStatus(
                                   alloc.id,
                                   "MISSING_ON_RETURN",
-                                  "1 unit missing at check-in; flagged for custodian audit",
+                                  "1 unit missing at check-in",
                                   1
                                 )
                               }
-                              className="px-2 py-1 rounded bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 text-[11px] font-medium"
+                              className="px-2 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 text-red-300 text-[11px] font-medium"
                             >
-                              Report 1 Missing
+                              1 Missing
                             </button>
                           </div>
                         )}

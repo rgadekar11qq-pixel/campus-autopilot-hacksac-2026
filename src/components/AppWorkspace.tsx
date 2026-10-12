@@ -26,6 +26,8 @@ import {
   XCircle,
   Info,
   X,
+  Play,
+  ArrowRight,
 } from "lucide-react";
 
 const NAV_ITEMS: Array<{
@@ -34,18 +36,18 @@ const NAV_ITEMS: Array<{
   icon: React.ComponentType<{ className?: string }>;
   highlight?: boolean;
 }> = [
-  { id: "COMMAND_CENTER", label: "Command Center", icon: LayoutDashboard },
-  { id: "TIMELINE", label: "Campus Timeline", icon: CalendarRange },
+  { id: "COMMAND_CENTER", label: "Mission Control", icon: LayoutDashboard },
+  { id: "TIMELINE", label: "Timeline", icon: CalendarRange },
   { id: "SMART_BOOKING", label: "Smart Booking", icon: CalendarPlus },
   {
     id: "SHOCKWAVE",
-    label: "Campus Shockwave",
+    label: "Shockwave Engine",
     icon: Zap,
     highlight: true,
   },
-  { id: "INVENTORY", label: "Resource Inventory", icon: Boxes },
-  { id: "IMPACT", label: "Impact & Utilization", icon: BarChart3 },
-  { id: "AUDIT_LOG", label: "Audit Log", icon: ScrollText },
+  { id: "INVENTORY", label: "Inventory", icon: Boxes },
+  { id: "IMPACT", label: "Impact", icon: BarChart3 },
+  { id: "AUDIT_LOG", label: "Audit", icon: ScrollText },
 ];
 
 export function AppWorkspace() {
@@ -53,6 +55,9 @@ export function AppWorkspace() {
     state,
     activeSection,
     setActiveSection,
+    activeSimulation,
+    latestApproval,
+    startGuidedEndToEndDemo,
     launchInstantShockwaveDemo,
     resetDemoScenario,
     toasts,
@@ -60,59 +65,108 @@ export function AppWorkspace() {
   } = useAutopilot();
 
   const conflicts = detectGlobalConflicts(state);
+  const roboticsBooking = state.bookings.find(
+    (b) => b.eventId === "evt-robotics-workshop" && b.status !== "CANCELLED"
+  );
+
+  // Determine current presentation step for visual indicator
+  const demoStep = latestApproval
+    ? 3
+    : activeSimulation
+    ? 2
+    : roboticsBooking
+    ? 1
+    : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-canvas text-slate-100">
+    <div className="min-h-screen flex flex-col text-slate-100">
       {/* Top Precision Instrumentation Header */}
-      <header className="sticky top-0 z-30 border-b border-canvas-border bg-canvas/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-canvas-border bg-canvas/85 backdrop-blur-xl">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Brand Identity */}
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSection("COMMAND_CENTER")}
+            className="flex items-center gap-3 text-left group shrink-0"
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-cyan/25 to-accent-cyan/5 border border-accent-cyan/50 flex items-center justify-center text-accent-cyanBright group-hover:bg-accent-cyan group-hover:text-slate-950 transition-all shadow-sm">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold tracking-wider text-sm text-slate-100">
+                  CAMPUS AUTOPILOT
+                </span>
+                <span className="hidden sm:inline-block font-mono text-[10px] px-2 py-0.5 rounded-full bg-accent-cyan/10 border border-accent-cyan/30 text-accent-cyanBright font-semibold">
+                  STRATOS
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-400 hidden sm:block">
+                Resource Orchestration & Shockwave Recovery
+              </div>
+            </div>
+          </button>
+
+          {/* Center Interactive 3-Step Presentation Flow Pill (Desktop) */}
+          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-canvas-elevated/90 border border-canvas-border text-xs">
             <button
-              onClick={() => setActiveSection("COMMAND_CENTER")}
-              className="flex items-center gap-2.5 text-left group"
+              onClick={startGuidedEndToEndDemo}
+              className={`px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+                demoStep === 0
+                  ? "bg-accent-cyan/20 text-accent-cyanBright font-semibold border border-accent-cyan/40"
+                  : "text-emerald-400 hover:bg-canvas-surface"
+              }`}
             >
-              <div className="w-9 h-9 rounded-lg bg-accent-cyan/15 border border-accent-cyan/40 flex items-center justify-center text-accent-cyanBright group-hover:bg-accent-cyan group-hover:text-slate-950 transition-colors">
-                <Zap className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold tracking-wider text-sm text-slate-100">
-                    CAMPUS AUTOPILOT
-                  </span>
-                  <span className="hidden sm:inline-block font-mono text-[10px] px-1.5 py-0.5 rounded bg-canvas-surface border border-canvas-border text-accent-cyanBright">
-                    STRATOS • HACKSAC 2026
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 hidden sm:block">
-                  Deterministic Operations & Shockwave Reconfiguration Engine
-                </div>
-              </div>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>1. Book Plan</span>
+            </button>
+            <ArrowRight className="w-3 h-3 text-slate-600" />
+            <button
+              onClick={launchInstantShockwaveDemo}
+              className={`px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+                demoStep === 2
+                  ? "bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/40"
+                  : "text-slate-300 hover:text-amber-300 hover:bg-canvas-surface"
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span>2. Trigger Outage</span>
+            </button>
+            <ArrowRight className="w-3 h-3 text-slate-600" />
+            <button
+              onClick={() => setActiveSection("SHOCKWAVE")}
+              className={`px-2.5 py-1 rounded-full flex items-center gap-1.5 transition-all ${
+                demoStep === 3
+                  ? "bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/40"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-canvas-surface"
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>3. Atomic Recovery</span>
             </button>
           </div>
 
           {/* Right Operational Status & Quick Demo Controls */}
-          <div className="flex items-center gap-2.5">
-            <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-canvas-elevated border border-canvas-border text-[11px] font-mono text-slate-300">
-              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-              <span>SIMULATED DATA • STATE v{state.stateVersion}</span>
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-canvas-elevated border border-canvas-border text-[11px] font-mono text-slate-300">
+              <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+              <span>v{state.stateVersion}</span>
             </div>
 
             <button
               onClick={launchInstantShockwaveDemo}
-              className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold text-xs flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-1.5 rounded-lg bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent-cyan/15 transition-all"
             >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Live Demo:</span> Shockwave
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Run Shockwave</span>
             </button>
 
             <button
               onClick={resetDemoScenario}
-              className="px-2.5 py-1.5 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-300 text-xs flex items-center gap-1.5 transition-colors"
-              title="Reset Robotics Workshop Demo to Baseline"
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-lg bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-300 text-xs flex items-center gap-1.5 transition-colors"
+              title="Reset Demo to Baseline"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Reset Demo</span>
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
         </div>
@@ -120,9 +174,9 @@ export function AppWorkspace() {
         {/* Secondary Navigation Bar */}
         <nav
           aria-label="Primary Operational Navigation"
-          className="border-t border-canvas-border/70 bg-canvas-elevated/80 overflow-x-auto"
+          className="border-t border-canvas-border/60 bg-canvas-elevated/60 overflow-x-auto"
         >
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 flex items-center gap-1 py-1.5">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 flex items-center gap-1.5 py-1.5">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeSection === item.id;
@@ -130,14 +184,14 @@ export function AppWorkspace() {
                 <button
                   key={item.id}
                   onClick={() => setActiveSection(item.id)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all ${
                     isActive
                       ? item.highlight
                         ? "bg-accent-cyan text-slate-950 font-bold shadow-sm"
-                        : "bg-canvas-surface text-accent-cyanBright border border-accent-cyan/40 font-semibold"
+                        : "bg-canvas-surface text-accent-cyanBright border border-accent-cyan/40 font-semibold shadow-sm"
                       : item.highlight
-                      ? "text-amber-300 hover:bg-amber-500/10 border border-transparent"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-canvas-surface/60"
+                      ? "text-amber-300 hover:bg-amber-500/10 border border-amber-500/20"
+                      : "text-slate-400 hover:text-slate-100 hover:bg-canvas-surface/60"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -148,8 +202,8 @@ export function AppWorkspace() {
                     </span>
                   )}
                   {item.id === "AUDIT_LOG" && (
-                    <span className="font-mono text-[10px] opacity-75">
-                      ({state.auditLog.length})
+                    <span className="font-mono text-[10px] px-1.5 rounded bg-canvas-elevated text-slate-400">
+                      {state.auditLog.length}
                     </span>
                   )}
                 </button>
@@ -170,17 +224,19 @@ export function AppWorkspace() {
         {activeSection === "AUDIT_LOG" && <AuditLogView />}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-canvas-border bg-canvas-elevated py-4 px-4 sm:px-6 text-xs text-slate-500">
+      {/* Compact Footer */}
+      <footer className="border-t border-canvas-border/60 bg-canvas-elevated/60 py-3 px-4 sm:px-6 text-xs text-slate-500">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            <strong className="text-slate-300">CAMPUS AUTOPILOT</strong> • Built
-            by Team <strong className="text-accent-cyanBright">STRATOS</strong>{" "}
-            for METSAC HackSAC 2026
+          <div className="flex items-center gap-2">
+            <strong className="text-slate-300">CAMPUS AUTOPILOT</strong>
+            <span>•</span>
+            <span>
+              Team <strong className="text-accent-cyanBright">STRATOS</strong>{" "}
+              (METSAC HackSAC 2026)
+            </span>
           </div>
-          <div className="font-mono text-[11px]">
-            Simulated Campus Dataset • Local Authoritative State Persistence (v
-            {state.stateVersion})
+          <div className="font-mono text-[11px] text-slate-400">
+            Deterministic Engine • State v{state.stateVersion}
           </div>
         </div>
       </footer>
