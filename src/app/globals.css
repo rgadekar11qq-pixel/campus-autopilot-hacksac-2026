@@ -3,91 +3,155 @@
 @tailwind utilities;
 
 :root {
-  --bg-canvas: #070a10;
-  --bg-elevated: #0d121c;
-  --bg-surface: #121926;
-  --bg-hover: #182132;
-  --border-subtle: #1f2b3e;
-  --border-strong: #2e3f5b;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --accent-cyan: #14b8a6;
-  --accent-amber: #f59e0b;
-  --accent-red: #ef4444;
-  --accent-emerald: #10b981;
+  color-scheme: dark;
+  --bg-canvas: #080c12;
+  --bg-elevated: #0d141e;
+  --bg-surface: #111b27;
+  --bg-hover: #172536;
+  --border-subtle: #223244;
+  --border-strong: #344b61;
+  --text-primary: #edf5fb;
+  --text-secondary: #a2b2c3;
+  --text-muted: #72859a;
+  --accent-cyan: #20c9b5;
+  --accent-amber: #f3b64c;
+  --accent-red: #fb6b72;
+  --accent-emerald: #36d399;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--bg-canvas); }
 body {
-  background-color: var(--bg-canvas);
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(32, 201, 181, .075), transparent 34rem),
+    radial-gradient(ellipse at 94% 18%, rgba(47, 109, 173, .07), transparent 30rem),
+    var(--bg-canvas);
   color: var(--text-primary);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
-/* Subtle technical grid backdrop */
+::selection { background: rgba(32, 201, 181, .28); color: #f5fffe; }
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+}
+button:disabled { opacity: .48; cursor: not-allowed; }
+
+/* A quiet technical grid: atmospheric, never competing with the data. */
 .bg-ops-grid {
-  background-image: linear-gradient(
-      to right,
-      rgba(31, 43, 62, 0.25) 1px,
-      transparent 1px
-    ),
-    linear-gradient(to bottom, rgba(31, 43, 62, 0.25) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-color: rgba(10, 17, 26, .62);
+  background-image:
+    linear-gradient(to right, rgba(72, 105, 132, .11) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(72, 105, 132, .11) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
-
-/* Diagonal stripes for turnaround buffers and maintenance windows */
 .bg-stripe-amber {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    rgba(245, 158, 11, 0.14),
-    rgba(245, 158, 11, 0.14) 5px,
-    rgba(245, 158, 11, 0.04) 5px,
-    rgba(245, 158, 11, 0.04) 10px
-  );
+  background-image: repeating-linear-gradient(-45deg, rgba(243,182,76,.18), rgba(243,182,76,.18) 5px, rgba(243,182,76,.05) 5px, rgba(243,182,76,.05) 10px);
 }
-
 .bg-stripe-red {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    rgba(239, 68, 68, 0.18),
-    rgba(239, 68, 68, 0.18) 6px,
-    rgba(239, 68, 68, 0.05) 6px,
-    rgba(239, 68, 68, 0.05) 12px
-  );
+  background-image: repeating-linear-gradient(-45deg, rgba(251,107,114,.2), rgba(251,107,114,.2) 6px, rgba(251,107,114,.055) 6px, rgba(251,107,114,.055) 12px);
 }
 
-/* Custom subtle scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Consistent surface language across every workspace. */
+header.sticky {
+  background: rgba(8, 12, 18, .88) !important;
+  border-color: rgba(88, 115, 139, .24) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .14);
+}
+header.sticky > div:first-child { min-height: 72px; }
+header nav { border-color: rgba(88, 115, 139, .18) !important; }
+header nav > div { gap: 5px !important; padding-top: 9px !important; padding-bottom: 9px !important; }
+header nav button {
+  min-height: 38px;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  border: 1px solid transparent;
+  border-radius: 9px !important;
+}
+header nav button:hover { background: rgba(134, 166, 190, .075); }
+header nav button[aria-current="page"] { background: rgba(32, 201, 181, .12); }
+
+main { padding-top: 28px !important; padding-bottom: 40px !important; }
+main > div { min-width: 0; }
+h1, h2, h3 { text-wrap: balance; }
+h1 { letter-spacing: -.035em; }
+h2 { letter-spacing: -.018em; }
+p { text-wrap: pretty; }
+
+/* Cards feel like instrument panels, with clear boundaries and subtle depth. */
+main .rounded-xl.border,
+main .rounded-xl.bg-canvas-elevated,
+main .rounded-xl.bg-canvas-surface {
+  border-color: rgba(91, 119, 145, .24);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .11);
+}
+main .bg-canvas-elevated { background-color: rgba(13, 20, 30, .94); }
+main .bg-canvas-surface { background-color: rgba(17, 27, 39, .92); }
+main .border-canvas-border { border-color: rgba(91, 119, 145, .22); }
+main .border-canvas-borderStrong { border-color: rgba(91, 119, 145, .34); }
+
+main button:not(:disabled) { transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease; }
+main button:not(:disabled):active { transform: translateY(1px); }
+main button[class*="hover:border-accent-cyan"]:hover { box-shadow: 0 8px 24px rgba(0, 0, 0, .16); }
+main button[class*="bg-accent-cyan"]:not([class*="bg-accent-cyan/"]):hover {
+  box-shadow: 0 0 0 3px rgba(32, 201, 181, .12), 0 8px 24px rgba(32, 201, 181, .12);
+}
+main .text-slate-400 { color: #9aabbd; }
+main .text-slate-500 { color: #8295a8; }
+main .text-xs { line-height: 1.55; }
+main .text-\[10px\] { font-size: 10px; line-height: 1.45; }
+main .text-\[11px\] { font-size: 11px; line-height: 1.5; }
+
+/* The command-centre intro is the page's visual anchor. */
+main h1 { font-size: clamp(22px, 2vw, 29px); line-height: 1.25; }
+main h2 { font-size: 15px; line-height: 1.4; }
+main h3 { line-height: 1.4; }
+main .shadow-xl, main .shadow-2xl { box-shadow: 0 18px 44px rgba(0, 0, 0, .2); }
+
+/* Timeline stays dense enough to compare schedules, without tiny controls. */
+main table { font-size: 12px; }
+main th { font-weight: 600; }
+main td, main th { border-color: rgba(91, 119, 145, .2); }
+main input, main select, main textarea {
+  background-color: #0b131d;
+  border-color: rgba(111, 143, 169, .34);
+  color: var(--text-primary);
+}
+main input::placeholder, main textarea::placeholder { color: #70859a; }
+main input:focus, main select:focus, main textarea:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 3px rgba(32, 201, 181, .1);
 }
 
-::-webkit-scrollbar-track {
-  background: #070a10;
+/* Inspector and notifications remain distinct from the workspace. */
+aside[aria-label="Room Inspector"], aside[aria-label="Event Inspector"] {
+  background: rgba(12, 19, 29, .97) !important;
+  border-color: rgba(91, 119, 145, .34) !important;
+  box-shadow: -24px 0 70px rgba(0, 0, 0, .35);
 }
+footer { border-color: rgba(88, 115, 139, .22) !important; }
 
-::-webkit-scrollbar-thumb {
-  background: #1f2b3e;
-  border-radius: 3px;
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #080c12; }
+::-webkit-scrollbar-thumb { background: #2a3b4e; border: 2px solid #080c12; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #415a70; }
+
+@media (max-width: 768px) {
+  header.sticky > div:first-child { min-height: 64px; }
+  header nav > div { padding-left: 14px !important; padding-right: 14px !important; }
+  header nav button { min-height: 40px; padding: 9px 11px !important; }
+  main { padding: 18px 14px 30px !important; }
+  main h1 { font-size: 23px; }
+  main .grid { min-width: 0; }
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: #2e3f5b;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  *,
-  ::before,
-  ::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
