@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavSection, useAutopilot } from "@/context/AutopilotContext";
 import { detectGlobalConflicts } from "@/domain/engine";
 import { CommandCenterView } from "./CommandCenterView";
@@ -28,7 +28,61 @@ import {
   X,
   Play,
   ArrowRight,
+  Palette,
 } from "lucide-react";
+
+export type CampusThemeId =
+  | "stratos"
+  | "crimson"
+  | "violet"
+  | "gold"
+  | "emerald";
+
+const THEMES: Array<{
+  id: CampusThemeId;
+  name: string;
+  shortLabel: string;
+  swatchBg: string;
+  swatchRing: string;
+}> = [
+  {
+    id: "crimson",
+    name: "Crimson & Black",
+    shortLabel: "Red/Black",
+    swatchBg: "bg-[#e11d48]",
+    swatchRing: "ring-[#ff3860]",
+  },
+  {
+    id: "stratos",
+    name: "Stratos Teal",
+    shortLabel: "Teal",
+    swatchBg: "bg-[#14b8a6]",
+    swatchRing: "ring-[#2dd4bf]",
+  },
+  {
+    id: "violet",
+    name: "Quantum Violet",
+    shortLabel: "Violet",
+    swatchBg: "bg-[#8b5cf6]",
+    swatchRing: "ring-[#a78bfa]",
+  },
+  {
+    id: "gold",
+    name: "Solaris Gold",
+    shortLabel: "Gold",
+    swatchBg: "bg-[#f59e0b]",
+    swatchRing: "ring-[#fbbf24]",
+  },
+  {
+    id: "emerald",
+    name: "Bio-Matrix",
+    shortLabel: "Emerald",
+    swatchBg: "bg-[#10b981]",
+    swatchRing: "ring-[#34d399]",
+  },
+];
+
+const THEME_STORAGE_KEY = "campus_autopilot_theme_v1";
 
 const NAV_ITEMS: Array<{
   id: NavSection;
@@ -64,12 +118,39 @@ export function AppWorkspace() {
     dismissToast,
   } = useAutopilot();
 
+  const [activeTheme, setActiveTheme] = useState<CampusThemeId>("crimson");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(
+        THEME_STORAGE_KEY
+      ) as CampusThemeId | null;
+      if (saved && THEMES.some((t) => t.id === saved)) {
+        setActiveTheme(saved);
+        document.documentElement.setAttribute("data-theme", saved);
+      } else {
+        document.documentElement.setAttribute("data-theme", "crimson");
+      }
+    } catch {
+      document.documentElement.setAttribute("data-theme", "crimson");
+    }
+  }, []);
+
+  const handleSelectTheme = (themeId: CampusThemeId) => {
+    setActiveTheme(themeId);
+    document.documentElement.setAttribute("data-theme", themeId);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   const conflicts = detectGlobalConflicts(state);
   const roboticsBooking = state.bookings.find(
     (b) => b.eventId === "evt-robotics-workshop" && b.status !== "CANCELLED"
   );
 
-  // Determine current presentation step for visual indicator
   const demoStep = latestApproval
     ? 3
     : activeSimulation
@@ -82,7 +163,7 @@ export function AppWorkspace() {
     <div className="min-h-screen flex flex-col text-slate-100">
       {/* Top Precision Instrumentation Header */}
       <header className="sticky top-0 z-30 border-b border-canvas-border bg-canvas/85 backdrop-blur-xl">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           {/* Brand Identity */}
           <button
             onClick={() => setActiveSection("COMMAND_CENTER")}
@@ -145,9 +226,41 @@ export function AppWorkspace() {
             </button>
           </div>
 
-          {/* Right Operational Status & Quick Demo Controls */}
+          {/* Right: 5-Theme Switcher + Status + Quick Demo Controls */}
           <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-canvas-elevated border border-canvas-border text-[11px] font-mono text-slate-300">
+            {/* 5-Theme Selector Bar */}
+            <div
+              role="group"
+              aria-label="Select Interface Theme"
+              className="flex items-center gap-1 px-2 py-1 rounded-full bg-canvas-elevated border border-canvas-border"
+            >
+              <Palette className="w-3.5 h-3.5 text-accent-cyanBright mr-0.5 hidden sm:inline" />
+              {THEMES.map((t) => {
+                const isSelected = activeTheme === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleSelectTheme(t.id)}
+                    title={`Theme: ${t.name}`}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-medium transition-all ${
+                      isSelected
+                        ? "bg-canvas-surface text-slate-100 border border-accent-cyan/50 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full ${t.swatchBg} ${
+                        isSelected ? `ring-2 ${t.swatchRing}` : ""
+                      }`}
+                    />
+                    <span className="hidden md:inline">{t.shortLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-canvas-elevated border border-canvas-border text-[11px] font-mono text-slate-300">
               <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
               <span>v{state.stateVersion}</span>
             </div>
@@ -157,7 +270,7 @@ export function AppWorkspace() {
               className="px-3.5 py-1.5 rounded-lg bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent-cyan/15 transition-all"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
-              <span>Run Shockwave</span>
+              <span className="hidden sm:inline">Run Shockwave</span>
             </button>
 
             <button
@@ -236,7 +349,8 @@ export function AppWorkspace() {
             </span>
           </div>
           <div className="font-mono text-[11px] text-slate-400">
-            Deterministic Engine • State v{state.stateVersion}
+            5 Live Themes ({THEMES.find((t) => t.id === activeTheme)?.name}) •
+            State v{state.stateVersion}
           </div>
         </div>
       </footer>

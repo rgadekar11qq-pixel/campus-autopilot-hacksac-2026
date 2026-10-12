@@ -39,7 +39,7 @@ function ScoreRing({ score }: { score: number }) {
           cy="22"
           r={radius}
           fill="none"
-          stroke="rgba(30, 41, 59, 0.9)"
+          stroke="rgb(var(--c-border))"
           strokeWidth="4"
         />
         <circle
@@ -47,7 +47,7 @@ function ScoreRing({ score }: { score: number }) {
           cy="22"
           r={radius}
           fill="none"
-          stroke="#14b8a6"
+          stroke="rgb(var(--c-accent))"
           strokeWidth="4"
           strokeDasharray={circumference}
           strokeDashoffset={offset}

@@ -2,21 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* 1. Default Theme: STRATOS TEAL (Obsidian Navy & Cyber Teal) */
+:root,
+[data-theme="stratos"] {
   color-scheme: dark;
-  --bg-canvas: #070b12;
-  --bg-elevated: #0d141e;
-  --bg-surface: #111b27;
-  --bg-hover: #172536;
-  --border-subtle: #223244;
-  --border-strong: #344b61;
+  --c-canvas: 7 11 18;
+  --c-elevated: 13 20 30;
+  --c-surface: 17 27 39;
+  --c-hover: 23 37 54;
+  --c-border: 34 50 68;
+  --c-border-strong: 52 75 97;
+  --c-accent: 20 184 166;
+  --c-accent-bright: 45 212 191;
+  --c-accent-Dim: 13 148 136;
+  --bg-canvas: rgb(var(--c-canvas));
   --text-primary: #edf5fb;
-  --text-secondary: #a2b2c3;
-  --text-muted: #72859a;
-  --accent-cyan: #20c9b5;
-  --accent-amber: #f3b64c;
-  --accent-red: #fb6b72;
-  --accent-emerald: #36d399;
+  --accent-cyan: rgb(var(--c-accent));
+}
+
+/* 2. RED & BLACK Theme: CRIMSON OPS (Pitch Carbon Black & Tactical Crimson Red) */
+[data-theme="crimson"] {
+  color-scheme: dark;
+  --c-canvas: 5 5 7;
+  --c-elevated: 11 9 13;
+  --c-surface: 18 13 18;
+  --c-hover: 28 18 25;
+  --c-border: 48 22 30;
+  --c-border-strong: 78 30 43;
+  --c-accent: 225 29 72;
+  --c-accent-bright: 255 56 96;
+  --c-accent-Dim: 190 18 60;
+  --bg-canvas: rgb(var(--c-canvas));
+  --text-primary: #fff1f2;
+  --accent-cyan: rgb(var(--c-accent));
+}
+
+/* 3. QUANTUM VIOLET Theme (Deep Cosmic Indigo & Electric Iris) */
+[data-theme="violet"] {
+  color-scheme: dark;
+  --c-canvas: 8 7 16;
+  --c-elevated: 14 12 28;
+  --c-surface: 21 18 40;
+  --c-hover: 30 26 56;
+  --c-border: 46 39 82;
+  --c-border-strong: 68 56 118;
+  --c-accent: 139 92 246;
+  --c-accent-bright: 167 139 250;
+  --c-accent-Dim: 124 58 237;
+  --bg-canvas: rgb(var(--c-canvas));
+  --text-primary: #f5f3ff;
+  --accent-cyan: rgb(var(--c-accent));
+}
+
+/* 4. SOLARIS GOLD Theme (Onyx Black & Radiant Amber-Gold) */
+[data-theme="gold"] {
+  color-scheme: dark;
+  --c-canvas: 9 8 6;
+  --c-elevated: 16 14 10;
+  --c-surface: 24 20 15;
+  --c-hover: 35 29 21;
+  --c-border: 54 44 30;
+  --c-border-strong: 82 65 42;
+  --c-accent: 245 158 11;
+  --c-accent-bright: 251 191 36;
+  --c-accent-Dim: 217 119 6;
+  --bg-canvas: rgb(var(--c-canvas));
+  --text-primary: #fffbeb;
+  --accent-cyan: rgb(var(--c-accent));
+}
+
+/* 5. BIO-MATRIX EMERALD Theme (Carbon Black & Cyber Emerald) */
+[data-theme="emerald"] {
+  color-scheme: dark;
+  --c-canvas: 5 10 8;
+  --c-elevated: 9 18 14;
+  --c-surface: 14 27 21;
+  --c-hover: 20 38 30;
+  --c-border: 29 56 44;
+  --c-border-strong: 44 84 66;
+  --c-accent: 16 185 129;
+  --c-accent-bright: 52 211 153;
+  --c-accent-Dim: 5 150 105;
+  --bg-canvas: rgb(var(--c-canvas));
+  --text-primary: #ecfdf5;
+  --accent-cyan: rgb(var(--c-accent));
 }
 
 * {
@@ -25,26 +94,27 @@
 
 html {
   scroll-behavior: smooth;
-  background: var(--bg-canvas);
+  background: rgb(var(--c-canvas));
 }
 
 body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(ellipse at 12% 0%, rgba(32, 201, 181, 0.085), transparent 38rem),
-    radial-gradient(ellipse at 92% 10%, rgba(56, 189, 248, 0.065), transparent 34rem),
-    var(--bg-canvas);
+    radial-gradient(ellipse at 12% 0%, rgb(var(--c-accent) / 0.12), transparent 38rem),
+    radial-gradient(ellipse at 92% 10%, rgb(var(--c-accent-bright) / 0.07), transparent 34rem),
+    rgb(var(--c-canvas));
   background-attachment: fixed;
   color: var(--text-primary);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 ::selection {
-  background: rgba(32, 201, 181, 0.28);
-  color: #f5fffe;
+  background: rgb(var(--c-accent) / 0.3);
+  color: #ffffff;
 }
 
 button,
@@ -63,7 +133,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--accent-cyan);
+  outline: 2px solid rgb(var(--c-accent));
   outline-offset: 2px;
 }
 
@@ -74,33 +144,33 @@ button:disabled {
 
 /* Subtle technical grid backdrop */
 .bg-ops-grid {
-  background-color: rgba(10, 17, 26, 0.62);
+  background-color: rgb(var(--c-elevated) / 0.65);
   background-image: linear-gradient(
       to right,
-      rgba(72, 105, 132, 0.14) 1px,
+      rgb(var(--c-border) / 0.35) 1px,
       transparent 1px
     ),
-    linear-gradient(to bottom, rgba(72, 105, 132, 0.14) 1px, transparent 1px);
+    linear-gradient(to bottom, rgb(var(--c-border) / 0.35) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
-/* Presentation Card Polish */
+/* Presentation Card Polish (Adapts dynamically to active theme) */
 .ops-card {
   background: linear-gradient(
     180deg,
-    rgba(17, 27, 39, 0.88) 0%,
-    rgba(13, 20, 30, 0.96) 100%
+    rgb(var(--c-surface) / 0.9) 0%,
+    rgb(var(--c-elevated) / 0.96) 100%
   );
   backdrop-filter: blur(12px);
   box-shadow:
-    0 8px 28px -4px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.045);
+    0 8px 28px -4px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .ops-glow-cyan {
   box-shadow:
-    0 0 32px -6px rgba(32, 201, 181, 0.32),
-    inset 0 1px 0 0 rgba(45, 212, 191, 0.22);
+    0 0 32px -6px rgb(var(--c-accent) / 0.35),
+    inset 0 1px 0 0 rgb(var(--c-accent-bright) / 0.22);
 }
 
 .ops-glow-amber {
@@ -138,9 +208,9 @@ button:disabled {
 
 aside[aria-label="Room Inspector"],
 aside[aria-label="Event Inspector"] {
-  background: rgba(12, 19, 29, 0.97) !important;
-  border-color: rgba(91, 119, 145, 0.34) !important;
-  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.35);
+  background: rgb(var(--c-elevated) / 0.97) !important;
+  border-color: rgb(var(--c-border-strong) / 0.65) !important;
+  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.45);
 }
 
 ::-webkit-scrollbar {
@@ -149,17 +219,17 @@ aside[aria-label="Event Inspector"] {
 }
 
 ::-webkit-scrollbar-track {
-  background: #070b12;
+  background: rgb(var(--c-canvas));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a3b4e;
-  border: 2px solid #070b12;
+  background: rgb(var(--c-border));
+  border: 2px solid rgb(var(--c-canvas));
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #415a70;
+  background: rgb(var(--c-border-strong));
 }
 
 @media (prefers-reduced-motion: reduce) {
