@@ -359,9 +359,10 @@ export function AutopilotProvider({ children }: { children: React.ReactNode }) {
     setLatestApproval(null);
     setActiveSection("SHOCKWAVE");
     pushToast({
-      type: "WARNING",
-      title: "Shockwave Triggered: INV-101 Unavailable",
-      detail: `Evaluated campus dependency graph for Autonomous Robotics Workshop. Found ${sim.validCandidates.length} feasible recovery plans.`,
+      type: "INFO",
+      title: `Shockwave Ready: ${sim.validCandidates.length} Recovery Plans Found`,
+      detail:
+        "Click 'Approve & Apply' on Rank #1 to relocate Autonomous Robotics Workshop.",
     });
   }, [state, pushToast]);
 

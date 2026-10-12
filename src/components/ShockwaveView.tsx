@@ -319,6 +319,322 @@ export function ShockwaveView() {
         </div>
       )}
 
+      {/* Active Shockwave Simulation Results & Candidate Comparison (Shown immediately above the fold when active) */}
+      {activeSimulation && (
+        <div className="space-y-6">
+          {/* Compact Visual Impact Propagation Bar */}
+          <div className="p-5 rounded-2xl ops-card border-2 border-accent-cyan/60 ops-glow-cyan space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-accent-cyanBright" />
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-accent-cyanBright font-bold">
+                    SIMULATION READY • {activeSimulation.validCandidates.length}{" "}
+                    RECOVERY PLANS GENERATED (STATE v
+                    {activeSimulation.stateVersion})
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-100 mt-1">
+                  {activeSimulation.disruption.title}
+                </h3>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 font-mono text-xs shrink-0">
+                <div className="px-3 py-2 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200">
+                  Direct:{" "}
+                  <strong className="text-sm">
+                    {activeSimulation.directlyAffectedEventIds.length}
+                  </strong>
+                </div>
+                <div className="px-3 py-2 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200">
+                  Coupled:{" "}
+                  <strong className="text-sm">
+                    {activeSimulation.indirectlyAffectedEventIds.length}
+                  </strong>
+                </div>
+                <div className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200">
+                  Feasible Plans:{" "}
+                  <strong className="text-sm">
+                    {activeSimulation.validCandidates.length}
+                  </strong>
+                </div>
+                {activeSimulation.validCandidates.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      commitCandidatePlan(
+                        activeSimulation.disruption,
+                        activeSimulation.validCandidates[0]
+                      )
+                    }
+                    className="px-4 py-2 rounded-xl bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 font-sans font-bold flex items-center gap-1.5 shadow-lg shadow-accent-cyan/20 transition-all"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Approve Best Plan (#1)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveSimulation(null)}
+                  className="px-3 py-2 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-300 hover:text-slate-100 font-sans font-medium"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+
+            {/* Broken Constraint Pills */}
+            {activeSimulation.originalViolations.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-canvas-border">
+                <span className="text-[11px] font-mono uppercase text-amber-300 font-semibold">
+                  Disruption Triggered:
+                </span>
+                {activeSimulation.originalViolations.map((v, idx) => (
+                  <div
+                    key={idx}
+                    className="px-2.5 py-1 rounded-lg bg-red-950/50 border border-red-500/40 text-xs text-red-100 flex items-center gap-2"
+                  >
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 font-bold">
+                      {v.code}
+                    </span>
+                    <span className="truncate max-w-md">{v.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Candidate Comparison & Rejected Options Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left 7 Columns: Ranked Feasible Candidate Plans */}
+            <div className="lg:col-span-7 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <GitCompare className="w-4 h-4 text-accent-cyanBright" />
+                Ranked Feasible Recovery Plans (
+                {activeSimulation.validCandidates.length})
+              </h3>
+
+              {activeSimulation.validCandidates.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-red-950/25 border border-red-500/40 space-y-2">
+                  <div className="flex items-center gap-2 text-red-300 font-bold text-sm">
+                    <XCircle className="w-5 h-5" />
+                    NO FEASIBLE RECOVERY PLAN EXISTS
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Every room and time slot violated hard constraints. Adjust
+                    attendance or restore equipment in Inventory.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activeSimulation.validCandidates.map((cand, idx) => {
+                    const isSelected = focusedCandidate?.id === cand.id;
+                    const candRoom = state.rooms.find(
+                      (r) => r.id === cand.proposedRoomId
+                    );
+
+                    const scoreBars = [
+                      {
+                        label: "Time",
+                        val: cand.score.timePreservationScore,
+                        max: 30,
+                      },
+                      {
+                        label: "Stability",
+                        val: cand.score.zeroDisplacementScore,
+                        max: 25,
+                      },
+                      {
+                        label: "Cap Fit",
+                        val: cand.score.capacityFitScore,
+                        max: 15,
+                      },
+                      {
+                        label: "Proximity",
+                        val: cand.score.proximityScore,
+                        max: 15,
+                      },
+                      {
+                        label: "Reuse",
+                        val: cand.score.resourceReuseScore,
+                        max: 15,
+                      },
+                    ];
+
+                    return (
+                      <div
+                        key={cand.id}
+                        onClick={() => setSelectedCandidateId(cand.id)}
+                        className={`p-5 rounded-2xl border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? "ops-card border-accent-cyan ops-glow-cyan"
+                            : "ops-card border-canvas-border hover:border-canvas-borderStrong"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <ScoreRing score={cand.score.totalScore} />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
+                                    idx === 0
+                                      ? "bg-accent-cyan text-slate-950"
+                                      : "bg-canvas-surface border border-canvas-border text-slate-300"
+                                  }`}
+                                >
+                                  RANK #{idx + 1}
+                                </span>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                  ALL CONSTRAINTS PASS
+                                </span>
+                              </div>
+                              <h4 className="text-base font-bold text-slate-100 mt-1">
+                                {cand.label}
+                              </h4>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              commitCandidatePlan(
+                                activeSimulation.disruption,
+                                cand
+                              );
+                            }}
+                            className="px-4 py-2.5 rounded-xl bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-accent-cyan/20 transition-all shrink-0"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Approve & Apply
+                          </button>
+                        </div>
+
+                        {/* Visual Diff Pills */}
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {cand.deltas.map((d, dIdx) => (
+                            <div
+                              key={dIdx}
+                              className="p-2.5 rounded-xl bg-canvas-surface/90 border border-canvas-border text-xs flex items-center justify-between gap-2"
+                            >
+                              <span className="text-[10px] font-mono uppercase text-slate-400 shrink-0">
+                                {d.label}
+                              </span>
+                              <div className="flex items-center gap-1.5 truncate font-mono text-[11px]">
+                                <span className="text-slate-400 truncate">
+                                  {d.before}
+                                </span>
+                                <ArrowRight className="w-3 h-3 text-accent-cyanBright shrink-0" />
+                                <span className="text-emerald-300 font-bold truncate">
+                                  {d.after}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 5 Visual Score Progress Bars */}
+                        <div className="mt-4 pt-3 border-t border-canvas-border grid grid-cols-5 gap-2.5 text-center font-mono text-[11px]">
+                          {scoreBars.map((sb) => (
+                            <div
+                              key={sb.label}
+                              className="p-2 rounded-lg bg-canvas-surface/70 border border-canvas-border/60"
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                <span>{sb.label}</span>
+                                <span className="text-slate-200 font-bold">
+                                  {sb.val}/{sb.max}
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-canvas-elevated overflow-hidden">
+                                <div
+                                  className="h-full bg-accent-cyan rounded-full"
+                                  style={{
+                                    width: `${Math.round(
+                                      (sb.val / sb.max) * 100
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Concise Pros & Trade-offs Chips */}
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                          {cand.score.rankingReasons.slice(0, 2).map((r, rIdx) => (
+                            <span
+                              key={rIdx}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 flex items-center gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3 h-3 shrink-0" />
+                              {r}
+                            </span>
+                          ))}
+                          {cand.score.tradeoffs.map((t, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 flex items-center gap-1.5"
+                            >
+                              <AlertTriangle className="w-3 h-3 shrink-0" />
+                              {t}
+                            </span>
+                          ))}
+                          <span className="ml-auto font-mono text-slate-400">
+                            {candRoom?.code} • +{cand.proposedTurnaroundMinutes}m
+                            buffer
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right 5 Columns: Compact Rejected Candidates List */}
+            <div className="lg:col-span-5 space-y-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-red-400" />
+                Filtered Invalid Options ({activeSimulation.rejectedAttempts.length})
+              </h3>
+
+              <div className="space-y-2.5">
+                {activeSimulation.rejectedAttempts.map((rej) => (
+                  <div
+                    key={rej.id}
+                    className="p-3.5 rounded-xl ops-card border border-red-500/30 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-200 truncate">
+                        {rej.attemptedLabel}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 shrink-0">
+                        REJECTED
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {rej.violations.map((v, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 text-[11px] text-red-200/90"
+                        >
+                          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/30 shrink-0">
+                            {v.code}
+                          </span>
+                          <span className="truncate">{v.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Step 1 & Step 2 Grid: Visual Dependency Map + Icon-Driven Disruption Deck */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left 5 Columns: Visual Dependency Node Map */}
@@ -654,305 +970,6 @@ export function ShockwaveView() {
           </div>
         </div>
       </div>
-
-      {/* Step 3: Shockwave Simulation Results & Candidate Comparison */}
-      {activeSimulation && (
-        <div className="space-y-6">
-          {/* Compact Visual Impact Propagation Bar */}
-          <div className="p-5 rounded-2xl ops-card border-2 border-amber-500/50 ops-glow-amber space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-amber-300 font-bold">
-                    SIMULATION SNAPSHOT v{activeSimulation.stateVersion}
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-100 mt-1">
-                  {activeSimulation.disruption.title}
-                </h3>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5 font-mono text-xs shrink-0">
-                <div className="px-3 py-2 rounded-xl bg-red-950/40 border border-red-500/40 text-red-200">
-                  Direct:{" "}
-                  <strong className="text-sm">
-                    {activeSimulation.directlyAffectedEventIds.length}
-                  </strong>
-                </div>
-                <div className="px-3 py-2 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200">
-                  Coupled:{" "}
-                  <strong className="text-sm">
-                    {activeSimulation.indirectlyAffectedEventIds.length}
-                  </strong>
-                </div>
-                <div className="px-3 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200">
-                  Feasible Plans:{" "}
-                  <strong className="text-sm">
-                    {activeSimulation.validCandidates.length}
-                  </strong>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveSimulation(null)}
-                  className="px-3 py-2 rounded-xl bg-canvas-surface hover:bg-canvas-hover border border-canvas-border text-slate-300 hover:text-slate-100 font-sans font-medium"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-
-            {/* Broken Constraint Pills */}
-            {activeSimulation.originalViolations.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-amber-500/20">
-                <span className="text-[11px] font-mono uppercase text-red-300 font-semibold">
-                  Broken Constraints:
-                </span>
-                {activeSimulation.originalViolations.map((v, idx) => (
-                  <div
-                    key={idx}
-                    className="px-2.5 py-1 rounded-lg bg-red-950/50 border border-red-500/40 text-xs text-red-100 flex items-center gap-2"
-                  >
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-red-500/30 text-red-200 font-bold">
-                      {v.code}
-                    </span>
-                    <span className="truncate max-w-md">{v.message}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Candidate Comparison & Rejected Options Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left 7 Columns: Ranked Feasible Candidate Plans */}
-            <div className="lg:col-span-7 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                <GitCompare className="w-4 h-4 text-accent-cyanBright" />
-                Ranked Feasible Recovery Plans (
-                {activeSimulation.validCandidates.length})
-              </h3>
-
-              {activeSimulation.validCandidates.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-red-950/25 border border-red-500/40 space-y-2">
-                  <div className="flex items-center gap-2 text-red-300 font-bold text-sm">
-                    <XCircle className="w-5 h-5" />
-                    NO FEASIBLE RECOVERY PLAN EXISTS
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    Every room and time slot violated hard constraints. Adjust
-                    attendance or restore equipment in Inventory.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {activeSimulation.validCandidates.map((cand, idx) => {
-                    const isSelected = focusedCandidate?.id === cand.id;
-                    const candRoom = state.rooms.find(
-                      (r) => r.id === cand.proposedRoomId
-                    );
-
-                    const scoreBars = [
-                      {
-                        label: "Time",
-                        val: cand.score.timePreservationScore,
-                        max: 30,
-                      },
-                      {
-                        label: "Stability",
-                        val: cand.score.zeroDisplacementScore,
-                        max: 25,
-                      },
-                      {
-                        label: "Cap Fit",
-                        val: cand.score.capacityFitScore,
-                        max: 15,
-                      },
-                      {
-                        label: "Proximity",
-                        val: cand.score.proximityScore,
-                        max: 15,
-                      },
-                      {
-                        label: "Reuse",
-                        val: cand.score.resourceReuseScore,
-                        max: 15,
-                      },
-                    ];
-
-                    return (
-                      <div
-                        key={cand.id}
-                        onClick={() => setSelectedCandidateId(cand.id)}
-                        className={`p-5 rounded-2xl border-2 transition-all cursor-pointer ${
-                          isSelected
-                            ? "ops-card border-accent-cyan ops-glow-cyan"
-                            : "ops-card border-canvas-border hover:border-canvas-borderStrong"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <ScoreRing score={cand.score.totalScore} />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
-                                    idx === 0
-                                      ? "bg-accent-cyan text-slate-950"
-                                      : "bg-canvas-surface border border-canvas-border text-slate-300"
-                                  }`}
-                                >
-                                  RANK #{idx + 1}
-                                </span>
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                                  ALL CONSTRAINTS PASS
-                                </span>
-                              </div>
-                              <h4 className="text-base font-bold text-slate-100 mt-1">
-                                {cand.label}
-                              </h4>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              commitCandidatePlan(
-                                activeSimulation.disruption,
-                                cand
-                              );
-                            }}
-                            className="px-4 py-2.5 rounded-xl bg-accent-cyan hover:bg-accent-cyanBright text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-accent-cyan/20 transition-all shrink-0"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            Approve & Apply
-                          </button>
-                        </div>
-
-                        {/* Visual Diff Pills */}
-                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          {cand.deltas.map((d, dIdx) => (
-                            <div
-                              key={dIdx}
-                              className="p-2.5 rounded-xl bg-canvas-surface/90 border border-canvas-border text-xs flex items-center justify-between gap-2"
-                            >
-                              <span className="text-[10px] font-mono uppercase text-slate-400 shrink-0">
-                                {d.label}
-                              </span>
-                              <div className="flex items-center gap-1.5 truncate font-mono text-[11px]">
-                                <span className="text-slate-400 truncate">
-                                  {d.before}
-                                </span>
-                                <ArrowRight className="w-3 h-3 text-accent-cyanBright shrink-0" />
-                                <span className="text-emerald-300 font-bold truncate">
-                                  {d.after}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* 5 Visual Score Progress Bars */}
-                        <div className="mt-4 pt-3 border-t border-canvas-border grid grid-cols-5 gap-2.5 text-center font-mono text-[11px]">
-                          {scoreBars.map((sb) => (
-                            <div
-                              key={sb.label}
-                              className="p-2 rounded-lg bg-canvas-surface/70 border border-canvas-border/60"
-                            >
-                              <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
-                                <span>{sb.label}</span>
-                                <span className="text-slate-200 font-bold">
-                                  {sb.val}/{sb.max}
-                                </span>
-                              </div>
-                              <div className="h-1.5 w-full rounded-full bg-canvas-elevated overflow-hidden">
-                                <div
-                                  className="h-full bg-accent-cyan rounded-full"
-                                  style={{
-                                    width: `${Math.round(
-                                      (sb.val / sb.max) * 100
-                                    )}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Concise Pros & Trade-offs Chips */}
-                        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                          {cand.score.rankingReasons.slice(0, 2).map((r, rIdx) => (
-                            <span
-                              key={rIdx}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 flex items-center gap-1.5"
-                            >
-                              <CheckCircle2 className="w-3 h-3 shrink-0" />
-                              {r}
-                            </span>
-                          ))}
-                          {cand.score.tradeoffs.map((t, tIdx) => (
-                            <span
-                              key={tIdx}
-                              className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 flex items-center gap-1.5"
-                            >
-                              <AlertTriangle className="w-3 h-3 shrink-0" />
-                              {t}
-                            </span>
-                          ))}
-                          <span className="ml-auto font-mono text-slate-400">
-                            {candRoom?.code} • +{cand.proposedTurnaroundMinutes}m
-                            buffer
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Right 5 Columns: Compact Rejected Candidates List */}
-            <div className="lg:col-span-5 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-400" />
-                Filtered Invalid Options ({activeSimulation.rejectedAttempts.length})
-              </h3>
-
-              <div className="space-y-2.5">
-                {activeSimulation.rejectedAttempts.map((rej) => (
-                  <div
-                    key={rej.id}
-                    className="p-3.5 rounded-xl ops-card border border-red-500/30 space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-slate-200 truncate">
-                        {rej.attemptedLabel}
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 shrink-0">
-                        REJECTED
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {rej.violations.map((v, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 text-[11px] text-red-200/90"
-                        >
-                          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/30 shrink-0">
-                            {v.code}
-                          </span>
-                          <span className="truncate">{v.message}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
