@@ -99,7 +99,7 @@ export function TimelineView() {
   return (
     <div className="space-y-5">
       {/* Top Toolbar: View Switcher, Date Controls, Filters, and Search */}
-      <div className="p-4 rounded-xl bg-canvas-elevated border border-canvas-border flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl ops-card border border-canvas-border flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Day / Week toggle */}
           <div className="inline-flex rounded-lg bg-canvas-surface p-1 border border-canvas-border">
@@ -222,7 +222,7 @@ export function TimelineView() {
       </div>
 
       {/* Legend Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-canvas-surface/70 border border-canvas-border text-xs text-slate-300">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl ops-card border border-canvas-border text-xs text-slate-300">
         <div className="flex flex-wrap items-center gap-5">
           <span className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-accent-cyan/30 border border-accent-cyan inline-block" />
@@ -248,7 +248,7 @@ export function TimelineView() {
 
       {viewMode === "DAY" ? (
         /* DAY TIMELINE GRID */
-        <div className="rounded-xl bg-canvas-elevated border border-canvas-border overflow-x-auto">
+        <div className="rounded-2xl ops-card border border-canvas-border overflow-x-auto">
           <div className="min-w-[920px]">
             {/* Time Ruler Header */}
             <div className="grid grid-cols-12 border-b border-canvas-border bg-canvas-surface/80">

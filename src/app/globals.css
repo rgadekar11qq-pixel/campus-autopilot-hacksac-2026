@@ -2,90 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 1. Default Theme: STRATOS TEAL (Obsidian Navy & Cyber Teal) */
+/* ============================================================================
+   1. CRIMSON & BLACK THEME (Red / Pitch Black Tactical Operations)
+   ============================================================================ */
 :root,
-[data-theme="stratos"] {
-  color-scheme: dark;
-  --c-canvas: 7 11 18;
-  --c-elevated: 13 20 30;
-  --c-surface: 17 27 39;
-  --c-hover: 23 37 54;
-  --c-border: 34 50 68;
-  --c-border-strong: 52 75 97;
-  --c-accent: 20 184 166;
-  --c-accent-bright: 45 212 191;
-  --c-accent-Dim: 13 148 136;
-  --bg-canvas: rgb(var(--c-canvas));
-  --text-primary: #edf5fb;
-  --accent-cyan: rgb(var(--c-accent));
-}
-
-/* 2. RED & BLACK Theme: CRIMSON OPS (Pitch Carbon Black & Tactical Crimson Red) */
 [data-theme="crimson"] {
   color-scheme: dark;
-  --c-canvas: 5 5 7;
-  --c-elevated: 11 9 13;
-  --c-surface: 18 13 18;
-  --c-hover: 28 18 25;
-  --c-border: 48 22 30;
-  --c-border-strong: 78 30 43;
+  --c-canvas: 4 2 3;
+  --c-elevated: 14 5 8;
+  --c-surface: 25 8 13;
+  --c-hover: 40 12 20;
+  --c-border: 76 17 30;
+  --c-border-strong: 127 29 50;
   --c-accent: 225 29 72;
   --c-accent-bright: 255 56 96;
-  --c-accent-Dim: 190 18 60;
-  --bg-canvas: rgb(var(--c-canvas));
-  --text-primary: #fff1f2;
-  --accent-cyan: rgb(var(--c-accent));
+  --c-accent-dim: 190 18 60;
+  --c-text-100: 255 241 242;
+  --c-text-200: 254 205 211;
+  --c-text-300: 253 164 175;
+  --c-text-400: 225 120 138;
+  --c-text-500: 168 85 102;
 }
 
-/* 3. QUANTUM VIOLET Theme (Deep Cosmic Indigo & Electric Iris) */
+/* ============================================================================
+   2. STRATOS TEAL THEME (Obsidian Navy & Cyber Teal)
+   ============================================================================ */
+[data-theme="stratos"] {
+  color-scheme: dark;
+  --c-canvas: 5 11 20;
+  --c-elevated: 11 22 38;
+  --c-surface: 17 34 56;
+  --c-hover: 26 49 79;
+  --c-border: 38 72 112;
+  --c-border-strong: 56 105 158;
+  --c-accent: 20 184 166;
+  --c-accent-bright: 45 212 191;
+  --c-accent-dim: 13 148 136;
+  --c-text-100: 240 253 250;
+  --c-text-200: 204 251 241;
+  --c-text-300: 153 246 228;
+  --c-text-400: 125 178 205;
+  --c-text-500: 92 138 168;
+}
+
+/* ============================================================================
+   3. QUANTUM VIOLET THEME (Deep Cosmic Purple & Electric Iris)
+   ============================================================================ */
 [data-theme="violet"] {
   color-scheme: dark;
-  --c-canvas: 8 7 16;
-  --c-elevated: 14 12 28;
-  --c-surface: 21 18 40;
-  --c-hover: 30 26 56;
-  --c-border: 46 39 82;
-  --c-border-strong: 68 56 118;
+  --c-canvas: 9 4 20;
+  --c-elevated: 20 10 42;
+  --c-surface: 31 17 61;
+  --c-hover: 46 25 89;
+  --c-border: 72 39 135;
+  --c-border-strong: 109 62 194;
   --c-accent: 139 92 246;
-  --c-accent-bright: 167 139 250;
-  --c-accent-Dim: 124 58 237;
-  --bg-canvas: rgb(var(--c-canvas));
-  --text-primary: #f5f3ff;
-  --accent-cyan: rgb(var(--c-accent));
+  --c-accent-bright: 192 132 252;
+  --c-accent-dim: 124 58 237;
+  --c-text-100: 245 243 255;
+  --c-text-200: 233 213 255;
+  --c-text-300: 216 180 254;
+  --c-text-400: 178 148 224;
+  --c-text-500: 136 106 184;
 }
 
-/* 4. SOLARIS GOLD Theme (Onyx Black & Radiant Amber-Gold) */
+/* ============================================================================
+   4. SOLARIS GOLD THEME (Onyx Black, Bronze Espresso & Molten Gold)
+   ============================================================================ */
 [data-theme="gold"] {
   color-scheme: dark;
-  --c-canvas: 9 8 6;
-  --c-elevated: 16 14 10;
-  --c-surface: 24 20 15;
-  --c-hover: 35 29 21;
-  --c-border: 54 44 30;
-  --c-border-strong: 82 65 42;
+  --c-canvas: 11 8 3;
+  --c-elevated: 24 16 6;
+  --c-surface: 38 25 10;
+  --c-hover: 56 37 15;
+  --c-border: 89 58 22;
+  --c-border-strong: 138 90 34;
   --c-accent: 245 158 11;
   --c-accent-bright: 251 191 36;
-  --c-accent-Dim: 217 119 6;
-  --bg-canvas: rgb(var(--c-canvas));
-  --text-primary: #fffbeb;
-  --accent-cyan: rgb(var(--c-accent));
+  --c-accent-dim: 217 119 6;
+  --c-text-100: 255 251 235;
+  --c-text-200: 254 243 199;
+  --c-text-300: 253 230 138;
+  --c-text-400: 214 184 138;
+  --c-text-500: 166 136 94;
 }
 
-/* 5. BIO-MATRIX EMERALD Theme (Carbon Black & Cyber Emerald) */
+/* ============================================================================
+   5. BIO-MATRIX EMERALD THEME (Terminal Forest-Black & Phosphor Emerald)
+   ============================================================================ */
 [data-theme="emerald"] {
   color-scheme: dark;
-  --c-canvas: 5 10 8;
-  --c-elevated: 9 18 14;
-  --c-surface: 14 27 21;
-  --c-hover: 20 38 30;
-  --c-border: 29 56 44;
-  --c-border-strong: 44 84 66;
+  --c-canvas: 3 12 7;
+  --c-elevated: 7 26 16;
+  --c-surface: 13 41 27;
+  --c-hover: 21 61 40;
+  --c-border: 32 94 62;
+  --c-border-strong: 50 140 94;
   --c-accent: 16 185 129;
   --c-accent-bright: 52 211 153;
-  --c-accent-Dim: 5 150 105;
-  --bg-canvas: rgb(var(--c-canvas));
-  --text-primary: #ecfdf5;
-  --accent-cyan: rgb(var(--c-accent));
+  --c-accent-dim: 5 150 105;
+  --c-text-100: 236 253 245;
+  --c-text-200: 209 250 229;
+  --c-text-300: 167 243 208;
+  --c-text-400: 110 205 165;
+  --c-text-500: 74 156 122;
 }
 
 * {
@@ -94,26 +114,41 @@
 
 html {
   scroll-behavior: smooth;
-  background: rgb(var(--c-canvas));
+  background-color: rgb(var(--c-canvas));
 }
 
 body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(ellipse at 12% 0%, rgb(var(--c-accent) / 0.12), transparent 38rem),
-    radial-gradient(ellipse at 92% 10%, rgb(var(--c-accent-bright) / 0.07), transparent 34rem),
+    radial-gradient(
+      ellipse at 12% 0%,
+      rgb(var(--c-accent) / 0.22),
+      transparent 42rem
+    ),
+    radial-gradient(
+      ellipse at 88% 12%,
+      rgb(var(--c-accent-bright) / 0.14),
+      transparent 38rem
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      rgb(var(--c-surface) / 0.65),
+      transparent 45rem
+    ),
     rgb(var(--c-canvas));
   background-attachment: fixed;
-  color: var(--text-primary);
+  color: rgb(var(--c-text-100));
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
 }
 
 ::selection {
-  background: rgb(var(--c-accent) / 0.3);
+  background: rgb(var(--c-accent) / 0.35);
   color: #ffffff;
 }
 
@@ -142,47 +177,64 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Global Form Controls & Tables adapt to active theme */
+input,
+select,
+textarea {
+  background-color: rgb(var(--c-surface)) !important;
+  border-color: rgb(var(--c-border)) !important;
+  color: rgb(var(--c-text-100)) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgb(var(--c-accent)) !important;
+  box-shadow: 0 0 0 3px rgb(var(--c-accent) / 0.18) !important;
+}
+
 /* Subtle technical grid backdrop */
 .bg-ops-grid {
-  background-color: rgb(var(--c-elevated) / 0.65);
+  background-color: rgb(var(--c-elevated) / 0.78);
   background-image: linear-gradient(
       to right,
-      rgb(var(--c-border) / 0.35) 1px,
+      rgb(var(--c-border) / 0.45) 1px,
       transparent 1px
     ),
-    linear-gradient(to bottom, rgb(var(--c-border) / 0.35) 1px, transparent 1px);
+    linear-gradient(to bottom, rgb(var(--c-border) / 0.45) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
-/* Presentation Card Polish (Adapts dynamically to active theme) */
+/* Presentation Card Polish (Full-UI Theme Surface + Top Accent Highlight) */
 .ops-card {
   background: linear-gradient(
-    180deg,
-    rgb(var(--c-surface) / 0.9) 0%,
-    rgb(var(--c-elevated) / 0.96) 100%
+    165deg,
+    rgb(var(--c-surface) / 0.94) 0%,
+    rgb(var(--c-elevated) / 0.98) 100%
   );
-  backdrop-filter: blur(12px);
+  border-color: rgb(var(--c-border) / 0.85);
+  backdrop-filter: blur(14px);
   box-shadow:
-    0 8px 28px -4px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    0 10px 30px -6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 0 rgb(var(--c-accent-bright) / 0.16);
 }
 
 .ops-glow-cyan {
   box-shadow:
-    0 0 32px -6px rgb(var(--c-accent) / 0.35),
-    inset 0 1px 0 0 rgb(var(--c-accent-bright) / 0.22);
+    0 0 36px -6px rgb(var(--c-accent) / 0.42),
+    inset 0 1px 0 0 rgb(var(--c-accent-bright) / 0.3);
 }
 
 .ops-glow-amber {
   box-shadow:
-    0 0 32px -6px rgba(243, 182, 76, 0.28),
-    inset 0 1px 0 0 rgba(251, 191, 36, 0.2);
+    0 0 32px -6px rgba(243, 182, 76, 0.32),
+    inset 0 1px 0 0 rgba(251, 191, 36, 0.22);
 }
 
 .ops-glow-emerald {
   box-shadow:
-    0 0 32px -6px rgba(54, 211, 153, 0.28),
-    inset 0 1px 0 0 rgba(52, 211, 153, 0.2);
+    0 0 32px -6px rgba(54, 211, 153, 0.32),
+    inset 0 1px 0 0 rgba(52, 211, 153, 0.22);
 }
 
 /* Diagonal stripes for turnaround buffers and maintenance windows */
@@ -199,18 +251,18 @@ button:disabled {
 .bg-stripe-red {
   background-image: repeating-linear-gradient(
     -45deg,
-    rgba(251, 107, 114, 0.2),
-    rgba(251, 107, 114, 0.2) 6px,
-    rgba(251, 107, 114, 0.055) 6px,
-    rgba(251, 107, 114, 0.055) 12px
+    rgba(251, 107, 114, 0.22),
+    rgba(251, 107, 114, 0.22) 6px,
+    rgba(251, 107, 114, 0.06) 6px,
+    rgba(251, 107, 114, 0.06) 12px
   );
 }
 
 aside[aria-label="Room Inspector"],
 aside[aria-label="Event Inspector"] {
-  background: rgb(var(--c-elevated) / 0.97) !important;
-  border-color: rgb(var(--c-border-strong) / 0.65) !important;
-  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.45);
+  background: rgb(var(--c-elevated) / 0.98) !important;
+  border-color: rgb(var(--c-border-strong) / 0.8) !important;
+  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.6);
 }
 
 ::-webkit-scrollbar {
